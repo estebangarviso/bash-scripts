@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# source "../../core/lib.sh"
-bash -c "$(curl -L https://raw.githubusercontent.com/estebangarviso/bash-scripts/main/core/lib.sh)"
+source "../../core/lib.sh"
 
 # Sanity check
 _checkRoot
@@ -148,14 +147,11 @@ function install() {
     _success "Packages installed!"
 
     # Installing and securing MariaDB
-    # source "$_rootDir/mariadb/install.sh"
-    bash -c "$(curl -L https://raw.githubusercontent.com/estebangarviso/bash-scripts/main/cloud/mariadb/install.sh)"
+    source "$_rootDir/mariadb/install.sh"
 
     # Create database
     local databaseName=$(echo $DOMAIN | cut -d. -f1)
-    # source "$_rootDir/mariadb/create-database.sh" -db="${databaseName}${DB_SUFFIX}" -r
-    # wget -qO- https://raw.githubusercontent.com/estebangarviso/bash-scripts/main/cloud/mariadb/create-database.sh | bash -db="${databaseName}${DB_SUFFIX}" -r
-    bash -c "$(curl -L https://raw.githubusercontent.com/estebangarviso/bash-scripts/main/cloud/mariadb/create-database.sh | bash -db="${databaseName}${DB_SUFFIX}" -r)"
+    source "$_rootDir/mariadb/create-database.sh" -db="${databaseName}${DB_SUFFIX}" -r
     _addMessage "<h3>Database</h3>" "success"
     _addMessage "Host: localhost" "success"
     _addMessage "Database: ${DB_NAME}" "success"
@@ -337,8 +333,7 @@ function configureNginx() {
     touch $LOGS_DIR/nginx/logs/$DOMAIN/access.log
     touch $LOGS_DIR/nginx/logs/$DOMAIN/error.log
     # Create Nginx config file and enable it
-    # source "./$CMS/nginx.template.sh"
-    wget -qO- https://raw.githubusercontent.com/estebangarviso/bash-scripts/main/cloud/cms/prestashop/nginx.template.sh | bash
+    source "./$CMS/nginx.template.sh"
     # Enable vhost
     ln -s $NGINX_AVAILABLE_VHOSTS_DIR/$DOMAIN.conf $NGINX_ENABLED_VHOSTS_DIR/$DOMAIN.conf
 }

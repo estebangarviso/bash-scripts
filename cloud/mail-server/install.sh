@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# source "../../core/lib.sh"
-wget -qO- https://raw.githubusercontent.com/estebangarviso/bash-scripts/main/core/lib.sh | bash
+source "../../core/lib.sh"
 
 # Sanity check
 _checkRoot
@@ -134,8 +133,7 @@ function main() {
     # Send email with error messages to EMAIL
     if [[ ! -z $_errorMsgs ]]; then
         echo "There were errors during the execution of the script. Sending email to $EMAIL"
-        # source "./send.sh" --to="$EMAIL" --subject="Error executing $(basename $0)" --body="$_errorMsgs"
-        wget -qO- https://raw.githubusercontent.com/estebangarviso/bash-scripts/main/cloud/mail-server/send.sh | bash --to="$EMAIL" --subject="Error executing $(basename $0)" --body="$_errorMsgs"
+        source "./send.sh" --to="$EMAIL" --subject="Error executing $(basename $0)" --body="$_errorMsgs"
     fi
 }
 

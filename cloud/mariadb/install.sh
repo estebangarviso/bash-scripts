@@ -3,8 +3,7 @@
 # Contribution: Lewiscowles1986
 # Reference: https://gist.github.com/Lewiscowles1986/973f4fa5f0a92f152cd5
 
-# source "../../core/lib.sh"
-wget -qO- https://raw.githubusercontent.com/estebangarviso/bash-scripts/main/core/lib.sh | bash
+source "../../core/lib.sh"
 
 # Sanity check
 _checkRoot

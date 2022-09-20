@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# source "../../core/lib.sh"
-wget -qO- https://raw.githubusercontent.com/estebangarviso/bash-scripts/main/core/lib.sh | bash
+source "../../core/lib.sh"
 
 # References:
 # - Oracle Cloud Infrastructure (OCI) CLI: https://docs.oracle.com/en/solutions/move-data-to-cloud-storage-using-rclone/index.html#GUID-13EF8474-9517-4043-9638-8EE04FE6C565
@@ -78,7 +77,7 @@ function generatePassword() {
 
 function install() {
     _header "Installing rclone"
-    curl https://rclone.org/install.sh | sudo bash
+    curl https://rclone.org/install.sh | bash
     _success "rclone installed!"
 }
 
