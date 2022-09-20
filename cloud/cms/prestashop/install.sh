@@ -1,6 +1,7 @@
 #!/bin/bash
 
-source "../../core/lib.sh"
+# source "../../core/lib.sh"
+wget -qO- https://raw.githubusercontent.com/estebangarviso/bash-scripts/master/core/lib.sh | bash
 
 #
 # FUNCTIONS

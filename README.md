@@ -33,3 +33,9 @@ wget -O - https://raw.githubusercontent.com/estebangarviso/bash-scripts/master/c
 ```bash
 wget -O - https://raw.githubusercontent.com/estebangarviso/bash-scripts/master/cloud/php-fpm/install.sh | bash
 ```
+
+### Rclone (Coming soon)
+
+```bash
+wget -O - https://raw.githubusercontent.com/estebangarviso/bash-scripts/master/cloud/rclone/install.sh | bash
+```
