@@ -41,7 +41,7 @@ function processArgs() {
             DB_NAME="${arg#*=}"
             ;;
         -r=* | --random=*)
-            [[-z $DB_NAME ]] && _error "Database name is mandatory" && exist 1
+            [[-z $DB_NAME ]] && _die "Database name is mandatory"
             DB_NAME="${DB_NAME}$(_generateRandomNumbers 3)"
             ;;
         -u=* | --user=*)
@@ -61,7 +61,7 @@ function processArgs() {
             ;;
         esac
     done
-    [[ -z $DB_NAME ]] && _error "Database name cannot be empty." && exit 1
+    [[ -z $DB_NAME ]] && _die "Database name cannot be empty."
     [[ $DB_USER ]] || DB_USER=$DB_NAME
 }
 

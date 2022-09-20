@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # source "../../core/lib.sh"
-wget -qO- https://raw.githubusercontent.com/estebangarviso/bash-scripts/master/core/lib.sh | bash
+bash -c "$(curl -L https://raw.githubusercontent.com/estebangarviso/bash-scripts/main/core/lib.sh)"
 
 # Sanity check
 _checkRoot
@@ -149,12 +149,13 @@ function install() {
 
     # Installing and securing MariaDB
     # source "$_rootDir/mariadb/install.sh"
-    wget -qO- https://raw.githubusercontent.com/estebangarviso/bash-scripts/master/cloud/mariadb/install.sh | bash
+    bash -c "$(curl -L https://raw.githubusercontent.com/estebangarviso/bash-scripts/master/cloud/mariadb/install.sh)"
 
     # Create database
     local databaseName=$(echo $DOMAIN | cut -d. -f1)
     # source "$_rootDir/mariadb/create-database.sh" -db="${databaseName}${DB_SUFFIX}" -r
-    wget -qO- https://raw.githubusercontent.com/estebangarviso/bash-scripts/master/cloud/mariadb/create-database.sh | bash -s -- -db="${databaseName}${DB_SUFFIX}" -r
+    # wget -qO- https://raw.githubusercontent.com/estebangarviso/bash-scripts/master/cloud/mariadb/create-database.sh | bash -db="${databaseName}${DB_SUFFIX}" -r
+    bash -c "$(curl -L https://raw.githubusercontent.com/estebangarviso/bash-scripts/master/cloud/mariadb/create-database.sh | bash -db="${databaseName}${DB_SUFFIX}" -r)"
     _addMessage "<h3>Database</h3>" "success"
     _addMessage "Host: localhost" "success"
     _addMessage "Database: ${DB_NAME}" "success"
