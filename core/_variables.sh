@@ -32,8 +32,6 @@ _blue=$(tput setaf 38)
 _errorMsgs=
 _successMsgs=
 
-_rootDir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)
-
 #
 # HEADERS & LOGGING
 #

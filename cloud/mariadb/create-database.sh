@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "../../core/lib.sh"
+source "$(pwd)/core/lib.sh"
 
 #
 # FUNCTIONS

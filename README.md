@@ -9,11 +9,20 @@ _Scripts tested on Ubuntu 22.04 LTS._
 
 ## Scripts for Cloud Services
 
-Before using the scripts, you need to clone the repository with the next commands:
+Before using the scripts, you need to clone or download the repository with the next commands:
 
 ```bash
-git clone
+git clone https://github.com/estebangarviso/bash-scripts.git
 cd bash-scripts
+```
+
+or
+Required unzip package
+
+```bash
+<(curl https://github.com/estebangarviso/bash-scripts/archive/main.zip || wget https://github.com/estebangarviso/bash-scripts/archive/main.zip)>
+unzip main.zip && rm main.zip
+cd bash-scripts-main
 ```
 
 ### MariaDB
