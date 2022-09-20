@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Creates a configuration script to run once final servers are up.
 PROCESS_SIZE_APACHE_MB=3

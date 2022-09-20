@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 cat <<EOF >$NGINX_AVAILABLE_VHOSTS_DIR/$DOMAIN.conf
 server {
 

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Contribution: Lewiscowles1986
 # Reference: https://gist.github.com/Lewiscowles1986/973f4fa5f0a92f152cd5
@@ -14,11 +14,11 @@ function installLinux() {
     # Install MariaDB
     apt-get install -qq mariadb-server mariadb-client -y
     # Start MariaDB
-    sh <$(systemctl start mariadb || service mysql start) >/dev/null 2>&1
+    bash -x <$(systemctl start mariadb || service mysql start) >/dev/null 2>&1
     # Secure MariaDB
     echo "$_secureMariaDB"
     # Restart MariaDB
-    sh <$(systemctl restart mariadb || service mysql restart) >/dev/null 2>&1
+    bash -x <$(systemctl restart mariadb || service mysql restart) >/dev/null 2>&1
     # Purge expect
     apt-get purge -qq expect -y
 }
