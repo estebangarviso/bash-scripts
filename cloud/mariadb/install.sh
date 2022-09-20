@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Contribution: Lewiscowles1986
 # Reference: https://gist.github.com/Lewiscowles1986/973f4fa5f0a92f152cd5

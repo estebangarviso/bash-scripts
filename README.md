@@ -25,17 +25,17 @@ cd ~/ && sh <(curl https://github.com/estebangarviso/bash-scripts/archive/main.z
 ### MariaDB
 
 ```bash
-cloud/mariadb/install.sh
+sh ./cloud/mariadb/install.sh
 ```
 
 ```bash
-cloud/mariadb/create-database.sh -db=database_name
+sh ./cloud/mariadb/create-database.sh -db=database_name
 ```
 
 ### Mail Server
 
 ```bash
-cloud/mail-server/install.sh
+sh ./cloud/mail-server/install.sh
 ```
 
 ### CMS
@@ -47,11 +47,11 @@ cloud/cms/install.sh
 ### PHP-FPM
 
 ```bash
-cloud/php-fpm/install.sh
+sh ./cloud/php-fpm/install.sh
 ```
 
 ### Rclone (Coming soon)
 
 ```bash
-cloud/rclone/install.sh
+sh ./cloud/rclone/install.sh
 ```

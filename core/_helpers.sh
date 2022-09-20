@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 lib_name='functions'
 lib_version=20221309
 
