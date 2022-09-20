@@ -11,16 +11,14 @@ _checkRoot
 function installLinux() {
     # Install expect
     apt install -qq expect -y
-
     # Install MariaDB
     apt-get install -qq mariadb-server mariadb-client -y
-
     # Start MariaDB
     sh <$(systemctl start mariadb || service mysql start) >/dev/null 2>&1
-
     # Secure MariaDB
     echo "$_secureMariaDB"
-
+    # Restart MariaDB
+    sh <$(systemctl restart mariadb || service mysql restart) >/dev/null 2>&1
     # Purge expect
     apt-get purge -qq expect -y
 }
@@ -34,6 +32,8 @@ function installMac() {
     fi
     # Start MariaDB
     brew services start mariadb
+    # Restart MariaDB
+    brew services restart mariadb
     # Secure MariaDB
     echo "$_secureMariaDB"
     # Purge expect
@@ -73,7 +73,7 @@ function main() {
     elif [[ "$OSTYPE" == "darwin"* ]]; then
         installMac
     else
-        # _die "OS not supported"
+        _warning "OS not supported"
     fi
     _success "MariaDB installed"
 }

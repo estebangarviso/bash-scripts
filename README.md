@@ -17,42 +17,41 @@ cd bash-scripts
 ```
 
 or
-Required unzip package
 
 ```bash
-sh <(curl https://github.com/estebangarviso/bash-scripts/archive/main.zip || wget https://github.com/estebangarviso/bash-scripts/archive/main.zip) && apt install unzip && unzip main.zip && rm main.zip && cd bash-scripts-main
+cd ~/ && sh <(curl https://github.com/estebangarviso/bash-scripts/archive/main.zip || wget https://github.com/estebangarviso/bash-scripts/archive/main.zip) && apt install unzip && unzip main.zip && rm main.zip && chmod u+x bash-scripts-main/*.sh && cd bash-scripts-main
 ```
 
 ### MariaDB
 
 ```bash
-sh ./cloud/mariadb/install.sh
+cloud/mariadb/install.sh
 ```
 
 ```bash
-sh ./cloud/mariadb/create-database.sh -db=database_name
+cloud/mariadb/create-database.sh -db=database_name
 ```
 
 ### Mail Server
 
 ```bash
-sh ./cloud/mail-server/install.sh
+cloud/mail-server/install.sh
 ```
 
 ### CMS
 
 ```bash
-sh ./cloud/cms/install.sh
+cloud/cms/install.sh
 ```
 
 ### PHP-FPM
 
 ```bash
-sh ./cloud/php-fpm/install.sh
+cloud/php-fpm/install.sh
 ```
 
 ### Rclone (Coming soon)
 
 ```bash
-sh ./cloud/rclone/install.sh
+cloud/rclone/install.sh
 ```
