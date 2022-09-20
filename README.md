@@ -19,7 +19,7 @@ cd bash-scripts
 or
 
 ```bash
-cd ~/ && sh <(curl https://github.com/estebangarviso/bash-scripts/archive/main.zip || wget https://github.com/estebangarviso/bash-scripts/archive/main.zip) && apt install unzip && unzip main.zip && rm main.zip && chmod u+x bash-scripts-main/*.sh && cd bash-scripts-main
+cd ~/ && sh <(curl https://github.com/estebangarviso/bash-scripts/archive/main.zip || wget https://github.com/estebangarviso/bash-scripts/archive/main.zip) && apt install unzip && unzip main.zip && rm main.zip && cd bash-scripts-main
 ```
 
 ### MariaDB
