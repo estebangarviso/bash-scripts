@@ -1,5 +1,5 @@
 # source "./core/lib.sh"
-bash
+bash -c "$(curl -L https://raw.githubusercontent.com/estebangarviso/bash-scripts/main/core/lib.sh)"
 
 # Sanity check
 _checkRoot
