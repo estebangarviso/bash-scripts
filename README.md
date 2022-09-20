@@ -20,41 +20,40 @@ or
 Required unzip package
 
 ```bash
-<(curl https://github.com/estebangarviso/bash-scripts/archive/main.zip || wget https://github.com/estebangarviso/bash-scripts/archive/main.zip)>
-unzip main.zip && rm main.zip
-cd bash-scripts-main
+sh <(curl https://github.com/estebangarviso/bash-scripts/archive/main.zip || wget https://github.com/estebangarviso/bash-scripts/archive/main.zip) 
+$([[ $(which unzip) ]] || apt install unzip) && apt install unzip && unzip main.zip && rm main.zip && cd bash-scripts-main
 ```
 
 ### MariaDB
 
 ```bash
-bash ./cloud/mariadb/install.sh
+sh ./cloud/mariadb/install.sh
 ```
 
 ```bash
-bash ./cloud/mariadb/create-database.sh -db=database_name
+sh ./cloud/mariadb/create-database.sh -db=database_name
 ```
 
 ### Mail Server
 
 ```bash
-bash ./cloud/mail-server/install.sh
+sh ./cloud/mail-server/install.sh
 ```
 
 ### CMS
 
 ```bash
-bash ./cloud/cms/install.sh
+sh ./cloud/cms/install.sh
 ```
 
 ### PHP-FPM
 
 ```bash
-bash ./cloud/php-fpm/install.sh
+sh ./cloud/php-fpm/install.sh
 ```
 
 ### Rclone (Coming soon)
 
 ```bash
-bash ./cloud/rclone/install.sh
+sh ./cloud/rclone/install.sh
 ```

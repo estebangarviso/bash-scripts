@@ -9,20 +9,38 @@ source "$(pwd)/core/lib.sh"
 _checkRoot
 
 function installLinux() {
+    # Install expect
     apt install -qq expect -y
 
-    # MariaDB 10.3
-    # Check if MariaDB is installed
-    if ! dpkg -s mariadb-server >/dev/null 2>&1; then
-        apt-get install -qq mariadb-server
-    fi
-    if ! dpkg -s mariadb-client >/dev/null 2>&1; then
-        apt-get install -qq mariadb-client
-    fi
+    # Install MariaDB
+    apt-get install -qq mariadb-server mariadb-client -y
+
     # Start MariaDB
     <$(systemctl start mariadb || service mysql start) >/dev/null 2>&1
 
-    _secureMariaDB=$(expect -c "
+    # Secure MariaDB
+    echo "$_secureMariaDB"
+
+    # Purge expect
+    apt-get purge -qq expect -y
+}
+
+function installMac() {
+    # Install expect
+    brew install expect
+    # Install MariaDB
+    if ! brew ls --versions mariadb >/dev/null; then
+        brew install mariadb
+    fi
+    # Start MariaDB
+    brew services start mariadb
+    # Secure MariaDB
+    echo "$_secureMariaDB"
+    # Purge expect
+    brew uninstall expect
+}
+
+_secureMariaDB=$(expect -c "
 set timeout 10
 spawn mysql_secure_installation
 expect \"Enter current password for root (enter for none):\"
@@ -45,18 +63,6 @@ expect \"Reload privilege tables now?\"
 send \"y\r\"
 expect eof
 ")
-
-    echo "$_secureMariaDB"
-
-    apt-get purge -qq expect -y
-}
-
-function installMac() {
-    # Check if MariaDB is installed
-    if ! brew ls --versions mariadb >/dev/null; then
-        brew install mariadb
-    fi
-}
 
 export MYSQL_ROOT_PASSWORD=$(openssl rand -base64 16)
 
