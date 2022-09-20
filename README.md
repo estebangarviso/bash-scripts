@@ -20,8 +20,7 @@ or
 Required unzip package
 
 ```bash
-sh <(curl https://github.com/estebangarviso/bash-scripts/archive/main.zip || wget https://github.com/estebangarviso/bash-scripts/archive/main.zip) 
-$([[ $(which unzip) ]] || apt install unzip) && apt install unzip && unzip main.zip && rm main.zip && cd bash-scripts-main
+sh <(curl https://github.com/estebangarviso/bash-scripts/archive/main.zip || wget https://github.com/estebangarviso/bash-scripts/archive/main.zip) && apt install unzip && unzip main.zip && rm main.zip && cd bash-scripts-main
 ```
 
 ### MariaDB
