@@ -1,6 +1,6 @@
 # source "./core/lib.sh"
-# Import with bash and curl
-bash <(curl -s https://raw.githubusercontent.com/estebangarviso/bash-scripts/main/core/lib.sh) >/dev/null 2>&1
+# Import with wget
+bash <(wget -qO- https://raw.githubusercontent.com/estebangarviso/bash-scripts/main/core/lib.sh) >/dev/null 2>&1
 
 # Sanity check
 _checkRoot
