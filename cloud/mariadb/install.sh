@@ -16,7 +16,7 @@ function installLinux() {
     apt-get install -qq mariadb-server mariadb-client -y
 
     # Start MariaDB
-    <$(systemctl start mariadb || service mysql start) >/dev/null 2>&1
+    sh <$(systemctl start mariadb || service mysql start) >/dev/null 2>&1
 
     # Secure MariaDB
     echo "$_secureMariaDB"
