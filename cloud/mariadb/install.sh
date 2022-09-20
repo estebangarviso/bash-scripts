@@ -9,7 +9,7 @@ source "$(pwd)/core/lib.sh"
 _checkRoot
 
 function installLinux() {
-    apt install -qq expect
+    apt install -qq expect -y
 
     # MariaDB 10.3
     # Check if MariaDB is installed
@@ -19,12 +19,14 @@ function installLinux() {
     if ! dpkg -s mariadb-client >/dev/null 2>&1; then
         apt-get install -qq mariadb-client
     fi
+    # Start MariaDB
+    <$(systemctl start mariadb || service mysql start) >/dev/null 2>&1
 
     _secureMariaDB=$(expect -c "
 set timeout 10
 spawn mysql_secure_installation
 expect \"Enter current password for root (enter for none):\"
-send \"root\r\"
+send \"\r\"
 expect \"Switch to unix_socket authentication \[Y/n\]\"
 send \"n\r\"
 expect \"Change the root password?\"
@@ -46,7 +48,7 @@ expect eof
 
     echo "$_secureMariaDB"
 
-    apt-get purge -qq expect
+    apt-get purge -qq expect -y
 }
 
 function installMac() {
