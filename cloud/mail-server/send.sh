@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # source "../../core/lib.sh"
-wget -qO- https://raw.githubusercontent.com/estebangarviso/bash-scripts/master/core/lib.sh | bash
+wget -qO- https://raw.githubusercontent.com/estebangarviso/bash-scripts/main/core/lib.sh | bash
 
 # Sanity check
 _checkRoot

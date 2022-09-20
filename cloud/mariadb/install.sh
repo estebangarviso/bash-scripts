@@ -4,7 +4,7 @@
 # Reference: https://gist.github.com/Lewiscowles1986/973f4fa5f0a92f152cd5
 
 # source "../../core/lib.sh"
-wget -qO- https://raw.githubusercontent.com/estebangarviso/bash-scripts/master/core/lib.sh | bash
+wget -qO- https://raw.githubusercontent.com/estebangarviso/bash-scripts/main/core/lib.sh | bash
 
 # Sanity check
 _checkRoot
