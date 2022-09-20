@@ -172,6 +172,13 @@ function install() {
         fi
     }
     # [[ "$OSTYPE" == "linux"* ]] && ETC_DIR="/etc" # Default value
+    # Add PHP version to CMS dependencies
+    for dep in $CMS_DEPENDENCIES; do
+        if [[ $dep =~ ^php- ]]; then
+            local newDep="${dep/php-/php$PHP_VERSION-}"
+            CMS_DEPENDENCIES=$(echo $CMS_DEPENDENCIES | sed "s/$dep/$newDep/g")
+        fi
+    done
 }
 
 # TODO: Add feacture to access via FTP and SFTP for user
