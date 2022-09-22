@@ -1,19 +1,16 @@
 #!/bin/bash
-lib_name='functions'
-lib_version=20221309
+lib_name_helpers='helpers'
+lib_version_helpers=20221309
 
 #
 # TO BE SOURCED ONLY ONCE:
 #
 ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 
-if test "${g_libs[$lib_name]+_}"; then
+if [[ " ${g_libs[*]} " =~ " ${lib_name_helpers}@${lib_version_helpers} " ]]; then
     return 0
 else
-    if test ${#g_libs[@]} == 0; then
-        declare -A g_libs
-    fi
-    g_libs[$lib_name]=$lib_version
+    g_libs+=("$lib_name_helpers@$lib_version_helpers")
 fi
 
 #
@@ -77,6 +74,55 @@ function _sendEmail() {
 function _getPublicIP() {
     local ip=$(curl -s http://checkip.amazonaws.com)
     echo $ip
+}
+
+function _checkUrl() {
+    local link=$1
+
+    if which wget >/dev/null; then
+        wget -q --spider $link
+        if [ $? -eq 0 ]; then
+            return 0
+        else
+            return 1
+        fi
+    elif which curl >/dev/null; then
+        curl -s --head $link | head -n 1 | grep "200 OK" >/dev/null
+        if [ $? -eq 0 ]; then
+            return 0
+        else
+            return 1
+        fi
+    else
+        case $OSTYPE in
+        linux*)
+            apt-get -qq -y install wget
+            ;;
+        darwin*)
+            brew install wget
+            ;;
+        esac
+
+        if which wget >/dev/null; then
+            wget -q --spider $link
+            if [ $? -eq 0 ]; then
+                return 0
+            else
+                return 1
+            fi
+        else
+            return 1
+        fi
+    fi
+    return 1
+}
+
+function _upperCase() {
+    echo "$@" | tr '[:lower:]' '[:upper:]'
+}
+
+function _capitalize() {
+    echo "$@" | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1'
 }
 
 function _printPoweredBy() {

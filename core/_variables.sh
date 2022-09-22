@@ -1,19 +1,16 @@
 #!/bin/bash
-lib_name='variables'
-lib_version=20221309
+lib_name_variables='variables'
+lib_version_variables=20221309
 
 #
 # TO BE SOURCED ONLY ONCE:
 #
 ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
-
-if test "${g_libs[$lib_name]+_}"; then
+# check if lib is already in the array g_libs
+if [[ " ${g_libs[*]} " =~ " ${lib_name_variables}@${lib_version_variables} " ]]; then
     return 0
 else
-    if test ${#g_libs[@]} == 0; then
-        declare -A g_libs
-    fi
-    g_libs[$lib_name]=$lib_version
+    g_libs+=("$lib_name_variables@$lib_version_variables")
 fi
 
 #
@@ -32,11 +29,18 @@ _blue=$(tput setaf 38)
 _errorMsgs=
 _successMsgs=
 
+_logFile=".bash-scripts.log"
+LOGS_DIR="$HOME/.bash-scripts/logs"
+
+DEBUG=0
+
 #
 # HEADERS & LOGGING
 #
 function _debug() {
-    [ "$DEBUG" -eq 1 ] && $@
+    if [ "$DEBUG" -eq 1 ]; then
+        $@
+    fi
 }
 
 function _header() {
@@ -73,6 +77,8 @@ function _note() {
 
 function _die() {
     _error "$@"
+    _addMessage "$@" "error"
+    _logMessages
     exit 1
 }
 
@@ -83,13 +89,22 @@ function _safeExit() {
 function _addMessage() {
     local message=$1
     local type
+    local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
     [[ -z "$2" ]] && type="" || type="$2"
     case $type in
     error)
-        [[ -z "$_errorMsgs" ]] && _errorMsgs="$message" || _errorMsgs="$_errorMsgs\n$message"
+        if [ -z "$_errorMsgs" ]; then
+            _errorMsgs="$timestamp: $message"
+        else
+            _errorMsgs="$_errorMsgs\n$timestamp: $message"
+        fi
         ;;
     success)
-        [[ -z "$_successMsgs" ]] && _successMsgs="$message" || _successMsgs="$_successMsgs\n$message"
+        if [ -z "$_successMsgs" ]; then
+            _successMsgs="$timestamp: $message"
+        else
+            _successMsgs="$_successMsgs\n$timestamp: $message"
+        fi
         ;;
     *)
         echo "$message"
@@ -100,8 +115,10 @@ function _addMessage() {
 function _getMessages() {
     local type
     local html
+    local log
     html="<h1>Report</h1>"
     [[ -z "$1" ]] && type="" || type="$1"
+    [[ -z "$2" ]] && log="" || log="$2"
     case $type in
     error)
         echo "$_errorMsgs"
@@ -110,9 +127,28 @@ function _getMessages() {
         echo "$_successMsgs"
         ;;
     htmlReport)
-        [[ -z "$_errorMsgs" ]] || html="$html <h2>Errors</h2> <pre>$_errorMsgs</pre>"
-        [[ -z "$_successMsgs" ]] || html="$html <h2>Successes</h2> <pre>$_successMsgs</pre>"
+        [[ -z "$_errorMsgs" ]] || html+="<h2>Errors</h2> <pre>$_errorMsgs</pre>"
+        [[ -z "$_successMsgs" ]] || html+="<h2>Successes</h2> <pre>$_successMsgs</pre>"
+        echo "$html"
         ;;
-
     esac
+}
+
+function _logMessages() {
+    [[ -z LOGS_DIR ]] && LOGS_DIR="~/logs"
+    [[ -d $LOGS_DIR ]] || mkdir -p $LOGS_DIR
+    # Add time stamp
+    local timestamp=$(date +%Y%m%d%H%M%S)
+    touch $LOGS_DIR/$_logFile
+    cat <<EOF >>$LOGS_DIR/$_logFile
+----------------------------------------
+Script: $0
+Timestamp: $timestamp
+----------------------------------------
+Error messages:
+$_errorMsgs
+Success messages:
+$_successMsgs
+----------------------------------------
+EOF
 }

@@ -66,9 +66,15 @@ function processArgs() {
             ;;
         esac
     done
-    [[ -z $RCLONE_CONFIG_ENDPOINT ]] && _die "Endpoint is mandatory"
-    [[ -z $RCLONE_CONFIG_ACCESS_KEY ]] && _die "Access key is mandatory"
-    [[ -z $RCLONE_CONFIG_SECRET_KEY ]] && _die "Secret key is mandatory"
+    if [ -z "$RCLONE_CONFIG_ENDPOINT" ]; then
+        _die "Rclone endpoint cannot be empty."
+    fi
+    if [ -z "$RCLONE_CONFIG_ACCESS_KEY" ]; then
+        _die "Rclone access key cannot be empty."
+    fi
+    if [ -z "$RCLONE_CONFIG_SECRET_KEY" ]; then
+        _die "Rclone secret key cannot be empty."
+    fi
 }
 
 function generatePassword() {

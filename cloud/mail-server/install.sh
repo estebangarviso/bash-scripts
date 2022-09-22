@@ -47,9 +47,12 @@ function processArgs() {
             ;;
         esac
     done
-    [[ -z $HOSTNAME ]] && _error "Host name cannot be empty." && exit 1
-
-    [[ -z $ADMIN_EMAIL ]] && ADMIN_EMAIL="admin@$DOMAIN"
+    if [ -z "$HOSTNAME" ]; then
+        _die "Host name cannot be empty."
+    fi
+    if [ -z "$ADMIN_EMAIL" ]; then
+        ADMIN_EMAIL="admin@$DOMAIN"
+    fi
 }
 
 function generatePassword() {

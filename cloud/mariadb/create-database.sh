@@ -40,7 +40,9 @@ function processArgs() {
             DB_NAME="${arg#*=}"
             ;;
         -r=* | --random=*)
-            [[-z $DB_NAME ]] && _die "Database name is mandatory"
+            if [ -z "$DB_NAME" ]; then
+                _die "Database name is mandatory"
+            fi
             DB_NAME="${DB_NAME}$(_generateRandomNumbers 3)"
             ;;
         -u=* | --user=*)
@@ -60,8 +62,12 @@ function processArgs() {
             ;;
         esac
     done
-    [[ -z $DB_NAME ]] && _die "Database name cannot be empty."
-    [[ $DB_USER ]] || DB_USER=$DB_NAME
+    if [ -z "$DB_NAME" ]; then
+        _die "Database name cannot be empty."
+    fi
+    if [ -z "$DB_USER" ]; then
+        DB_USER=$DB_NAME
+    fi
 }
 
 function generatePassword() {
@@ -126,14 +132,10 @@ export DB_PASS=$(generatePassword)
 
 function main() {
     [[ $# -lt 1 ]] && _usage
-    _success "Processing arguments..."
     processArgs "$@"
-    _success "Done!"
-
-    _success "Creating MySQL db and user..."
+    _header "Creating MySQL db and user..."
     createMysqlDbUser
-    _success "Done!"
-
+    _success "MySQL db and user created successfully!"
     printSuccessMessage
 }
 

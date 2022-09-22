@@ -36,11 +36,11 @@ Version $VERSION
     Options:
         -c, --cms                   CMS to install (default: prestashop)
         -d, --domain                Domain name (mandatory)
-        -u, --u                     OS user (default: domain without TLD)
+        -u, --user                  FTP user (mandatory) # TODO
         -sa, --super-admin          CMS super admin email (mandatory)
         -sap, --super-addmin-pass   CMS super admin password (If empty, auto-generated)
-        -a, --admin                 CMS admin email (mandatory)
-        -ap, --admin-pass           CMS admin password (If empty, auto-generated)
+        -a, --admin                 CMS admin email (mandatory) # TODO
+        -ap, --admin-pass           CMS admin password (If empty, auto-generated) # TODO
 
         -h, --help                  Display this help and exit
         -v, --version               Output version information and exit
@@ -60,12 +60,15 @@ function processArgs() {
         -c=* | --cms=*)
             CMS="${arg#*=}"
             ;;
+        -ic=* | --iso-code=*)
+            CMS_ISO_CODE="${arg#*=}"
+            ;;
         -d=* | --domain=*)
             DOMAIN="${arg#*=}"
             ;;
-        -u=* | --user=*)
-            USER="${arg#*=}"
-            ;;
+        # -u=* | --user=*)
+        #     USER="${arg#*=}"
+        #     ;;
         -sa=* | --super-admin=*)
             SUPER_ADMIN="${arg#*=}"
             ;;
@@ -89,23 +92,36 @@ function processArgs() {
             ;;
         esac
     done
-    [[ ! " ${ALLOWED_CMS[@]} " =~ " ${CMS} " ]] && _die "CMS not allowed!"
-    [[ -z $DOMAIN ]] && _die "Domain name cannot be empty."
-    [[ -z $SUPER_ADMIN ]] && _die "Super admin email cannot be empty."
-    [[ -z $ADMIN ]] && _die "Admin email cannot be empty."
-    [[ -z $USER ]] && USER=$(echo $DOMAIN | cut -d. -f1)
-    local userCounter=0
-    id -u "$USER" >/dev/null 2>&1 && {
-        while id -u "$USER$userCounter" >/dev/null 2>&1; do
-            ((userCounter++))
-        done
-        USER="$USER$userCounter"
-    }
+    if [ ! " ${ALLOWED_CMS[@]} " =~ " ${CMS} " ]; then
+        _die "CMS not allowed!"
+    fi
+    if [ -z $DOMAIN ]; then
+        _die "Domain name cannot be empty."
+    fi
+    if [ -z $SUPER_ADMIN ]; then
+        _die "Super admin email cannot be empty."
+    fi
+    # if [ -z $ADMIN ]; then
+    #     _die "Admin email cannot be empty."
+    # fi
+    # if [ -z $USER ]; then
+    #     USER=$(echo $DOMAIN | cut -d. -f1)
+    # fi
+    # local userCounter=0
+    # if id -u "$USER" >/dev/null 2>&1; then
+    #     while id -u "$USER$userCounter" >/dev/null 2>&1; do
+    #         ((userCounter++))
+    #     done
+    #     USER="$USER$userCounter"
+    # fi
     local tableSuffix="ps"
-    [[ $CMS == "prestashop" ]] && {
+    if [ $CMS == "prestashop" ]; then
         DB_SUFFIX=$(echo $CMS | cut -c1-4)
         DB_TABLE_PREFIX=$(echo "$tableSuffix$(_generateRandomNumbers 3)_")
-    }
+        # Refresh VERSION
+        CMS_COMPRESSED_FILE="prestashop_${CMS_VERSION}.zip"
+        CMS_DOWNLOAD_URL="https://download.prestashop.com/download/releases/${CMS_COMPRESSED_FILE}"
+    fi
     # TODO: Add DB_SUFFIX and DB_TABLE_PREFIX for other CMS
 }
 
@@ -127,23 +143,46 @@ function generateRandomString() {
 function update() {
     _header "Updating system"
     apt update -y && apt upgrade -y
-    _success "System updated!"
+    _header "Installing software-properties-common and apt-transport-https"
+    apt install software-properties-common apt-transport-https -y
+    _header "Import PHP Repository"
+    add-apt-repository ppa:ondrej/php -y
+    _header "Updating system again after adding PHP repository"
+    apt update -y && apt upgrade -y
+    _success "System updated"
 }
 
 function install() {
     _header "Installing $CMS"
-
+    # Check CMS Before Install
+    cd $WEB_DIR
+    if [ -d "${WEB_DIR}/${DOMAIN}" ]; then
+        _die "${WEB_DIR}/${DOMAIN} already exists! Please backup your data outside ${WEB_DIR} or remove it."
+    fi
+    if [ -d $CMS_COMPRESSED_FILE ]; then
+        _warning "Deleting existing $CMS_COMPRESSED_FILE"
+        rm -rf $CMS_COMPRESSED_FILE || {
+            _die "rm ${CMS_COMPRESSED_FILE} failed !"
+        }
+    fi
+    if ! _checkUrl $CMS_DOWNLOAD_URL; then
+        _die "Prestashop version $CMS_VERSION not found in $CMS_DOWNLOAD_URL, please check the version number or the URL."
+    fi
+    # Add PHP version to CMS dependencies
+    for dep in $CMS_DEPENDENCIES; do
+        if [[ $dep =~ ^php- ]]; then
+            local newDep="${dep/php-/php$PHP_VERSION-}"
+            CMS_DEPENDENCIES=$(echo $CMS_DEPENDENCIES | sed "s/$dep/$newDep/g")
+        fi
+        if [[ $dep =~ -php$ ]]; then
+            local newDep="${dep/-php/-php$PHP_VERSION}"
+            CMS_DEPENDENCIES=$(echo $CMS_DEPENDENCIES | sed "s/$dep/$newDep/g")
+        fi
+    done
     # Installing packages
-    case $CMS in
-    prestashop)
-        # mariadb-server and mariadb-client were installed in mariadb/install.sh
-        apt install -y
-        ;;
-    *)
-        _die "CMS not supported"
-        # Checked CMS on processArgs function
-        ;;
-    esac
+    # mariadb-server and mariadb-client will be installed in mariadb/install.sh
+    apt install -y $CMS_DEPENDENCIES
+
     _success "Packages installed!"
 
     # Installing and securing MariaDB
@@ -163,22 +202,26 @@ function install() {
     PHP_VERSION_SHORT=$(echo $PHP_VERSION | sed 's/\([0-9]\)\.\([0-9]\).*/\1\2/')
     _success "PHP version: $PHP_VERSION"
 
+    # Set CMS_INSTALL_ARGS
+    CMS_INSTALL_ARGS=(
+        --domain=$DOMAIN
+        --db_name=$DB_NAME
+        --db_user=$DB_USER
+        --db_pass=$DB_PASS
+        --prefix=$DB_TABLE_PREFIX
+    )
+    # Install CMS
+    _header "Installing $CMS through CLI"
+    source "$(pwd)/cloud/$CMS/install.sh" --notci --ia $()
+
     # Set by operating system
-    [["$OSTYPE" == "darwin"*]] && {
+    if [ "$OSTYPE" == "darwin"* ]; then
         if $(uname -m) == "arm64"; then
             ETC_DIR="/opt/homebrew/etc"
         else
             ETC_DIR="/usr/local/etc"
         fi
-    }
-    # [[ "$OSTYPE" == "linux"* ]] && ETC_DIR="/etc" # Default value
-    # Add PHP version to CMS dependencies
-    for dep in $CMS_DEPENDENCIES; do
-        if [[ $dep =~ ^php- ]]; then
-            local newDep="${dep/php-/php$PHP_VERSION-}"
-            CMS_DEPENDENCIES=$(echo $CMS_DEPENDENCIES | sed "s/$dep/$newDep/g")
-        fi
-    done
+    fi
 }
 
 # TODO: Add feacture to access via FTP and SFTP for user
@@ -393,13 +436,17 @@ WEB_USER="www-data"
 # USER_PWD=
 
 CMS="prestashop"
+CMS_INSTALL_ARGS=()
 CMS_VERSION="1.7.6.9"
 CMS_DEPENDENCIES="nginx php-fpm php-common php-mysql php-gmp php-curl php-intl php-mbstring php-xmlrpc php-gd php-bcmath php-imap php-xml php-cli php-zip unzip wget git curl"
+CMS_COMPRESSED_FILE="prestashop_${CMS_VERSION}.zip"
+CMS_DOWNLOAD_URL="https://download.prestashop.com/download/releases/${CMS_COMPRESSED_FILE}"
+CMS_ISO_CODE="en"
 ADMIN_DIRNAME="admin$(generateRandomString 10)"
 SUPER_ADMIN=
 SUPER_ADMIN_PASS="$(generatePassword)"
 # ADMIN=
-# ADMIN_PASS=
+# ADMIN_PASS="$(generatePassword)"
 
 NGINX_AVAILABLE_VHOSTS_DIR="$ETC_DIR/nginx/sites-available"
 NGINX_ENABLED_VHOSTS_DIR="$ETC_DIR/nginx/sites-enabled"

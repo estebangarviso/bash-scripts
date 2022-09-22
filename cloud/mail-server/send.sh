@@ -62,11 +62,21 @@ function processArgs() {
             ;;
         esac
     done
-    [[ -z "$DOMAIN" ]] && DOMAIN="$(hostname -d)"
-    [[ -z "$FROM" ]] && FROM="admin@$DOMAIN"
-    [[ -z "$TO" ]] && _die "Recipient email address is required."
-    [[ -z "$SUBJECT" ]] && SUBJECT=""
-    [[ -z "$BODY" ]] && _die "Body is required"
+    if [ -z "$DOMAIN" ]; then
+        _die "Domain name cannot be empty."
+    fi
+    if [ -z "$FROM" ]; then
+        _die "Sender email address cannot be empty."
+    fi
+    if [ -z "$TO" ]; then
+        _die "Recipient email address cannot be empty."
+    fi
+    if [ -z "$SUBJECT" ]; then
+        _die "Subject cannot be empty."
+    fi
+    if [ -z "$BODY" ]; then
+        _die "Body cannot be empty."
+    fi
 }
 
 #

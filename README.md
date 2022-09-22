@@ -5,7 +5,7 @@ Be sure to have the `bash` shell installed on your system and run the code as ro
 Read usage methods in the scripts in order to know how to use them.
 Files are named as `bash-scripts/main/<service>/<action>.sh`.
 
-_Scripts tested on Ubuntu 22.04 LTS._
+_Scripts tested on Linux Ubuntu 22.04 and Mac Darwin 21.0_
 
 ## Scripts for Cloud Services
 
@@ -19,7 +19,7 @@ cd bash-scripts
 or
 
 ```bash
-cd ~/ && sh <(curl https://github.com/estebangarviso/bash-scripts/archive/main.zip || wget https://github.com/estebangarviso/bash-scripts/archive/main.zip) && apt install unzip && unzip main.zip && rm main.zip && cd bash-scripts-main
+cd ~/ && sh <(curl https://github.com/estebangarviso/bash-scripts/archive/main.zip || wget https://github.com/estebangarviso/bash-scripts/archive/main.zip) && apt -qq -y install unzip && unzip main.zip && rm main.zip && cd bash-scripts-main
 ```
 
 ### MariaDB

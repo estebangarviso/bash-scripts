@@ -1,8 +1,7 @@
 # Credits: Luca Borrione
 # Reference: https://stackoverflow.com/questions/64786/error-handling-in-bash#answer-13099228
-
-lib_name='trap'
-lib_version=20121026
+lib_name_trap='trap'
+lib_version_trap=20121026
 
 stderr_log="/dev/stderr"
 
@@ -11,13 +10,10 @@ stderr_log="/dev/stderr"
 #
 ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 
-if test "${g_libs[$lib_name]+_}"; then
+if [[ " ${g_libs[*]} " =~ " ${lib_name_trap}@${lib_version_trap} " ]]; then
     return 0
 else
-    if test ${#g_libs[@]} == 0; then
-        declare -A g_libs
-    fi
-    g_libs[$lib_name]=$lib_version
+    g_libs+=("$lib_name_trap@$lib_version_trap")
 fi
 
 #

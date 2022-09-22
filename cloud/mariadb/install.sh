@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Contribution: Lewiscowles1986
 # Reference: https://gist.github.com/Lewiscowles1986/973f4fa5f0a92f152cd5
@@ -8,39 +8,8 @@ source "$(pwd)/core/lib.sh"
 # Sanity check
 _checkRoot
 
-function installLinux() {
-    # Install expect
-    apt install -qq expect -y
-    # Install MariaDB
-    apt-get install -qq mariadb-server mariadb-client -y
-    # Start MariaDB
-    bash -x <$(systemctl start mariadb || service mysql start) >/dev/null 2>&1
-    # Secure MariaDB
-    echo "$_secureMariaDB"
-    # Restart MariaDB
-    bash -x <$(systemctl restart mariadb || service mysql restart) >/dev/null 2>&1
-    # Purge expect
-    apt-get purge -qq expect -y
-}
-
-function installMac() {
-    # Install expect
-    brew install expect
-    # Install MariaDB
-    if ! brew ls --versions mariadb >/dev/null; then
-        brew install mariadb
-    fi
-    # Start MariaDB
-    brew services start mariadb
-    # Restart MariaDB
-    brew services restart mariadb
-    # Secure MariaDB
-    echo "$_secureMariaDB"
-    # Purge expect
-    brew uninstall expect
-}
-
-_secureMariaDB=$(expect -c "
+function _secureMariaDB() {
+    echo $(expect -c "
 set timeout 10
 spawn mysql_secure_installation
 expect \"Enter current password for root (enter for none):\"
@@ -63,6 +32,47 @@ expect \"Reload privilege tables now?\"
 send \"y\r\"
 expect eof
 ")
+}
+
+function installLinux() {
+    # Install expect
+    apt install -qq expect -y
+    # Install MariaDB
+    apt-get install -qq mariadb-server mariadb-client -y
+    # Start MariaDB (it is required to secure it)
+    pidof systemd && {
+        systemctl start mariadb
+    } || {
+        service mariadb start
+    }
+    # Secure MariaDB
+    _secureMariaDB
+    # Restart MariaDB
+    pidof systemd && {
+        systemctl restart mariadb
+    } || {
+        service mariadb restart
+    }
+    # Purge expect
+    apt-get purge -qq expect -y
+}
+
+function installMac() {
+    # Install expect
+    brew install expect
+    # Install MariaDB
+    if ! brew ls --versions mariadb >/dev/null; then
+        brew install mariadb
+    fi
+    # Start MariaDB (it is required to secure it)
+    brew services start mariadb
+    # Restart MariaDB
+    brew services restart mariadb
+    # Secure MariaDB
+    _secureMariaDB
+    # Purge expect
+    brew uninstall expect
+}
 
 export MYSQL_ROOT_PASSWORD=$(openssl rand -base64 16)
 
