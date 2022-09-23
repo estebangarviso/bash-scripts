@@ -3,7 +3,7 @@
 source "$(pwd)/core/lib.sh"
 
 # Sanity check
-_checkRoot
+_checkSanity
 
 #
 # FUNCTIONS
@@ -21,7 +21,7 @@ Pre-requisites:
     - A running PHP-FPM server
 
     Prestashop Install CLI options (available arguments (PrestaShop version 1.7.6.9):
-        --l, --language                     Language (default: en)
+        --language                          Language (default: en)
         --all_languages                     Install all languages (default: 0)
         --t, --timezone                     Shop timezone (default: Europe/Paris)
         --base_uri                          Base URI (default: /)
@@ -66,7 +66,7 @@ function availableArguments() {
     --language=\"en\" -t=\"Europe/Paris\" --db_name=\"prestashop\" --db_user=\"prestashop\" --db_password=\"prestashop\" --db_host=\"localhost\" --db_port=\"3306\" --db_prefix=\"ps_\" --domain=\"demo.com\"
     
     PHP arguments, /var/www/yourdomain/install/classes/datas.php line 30
-    #     protected static $available_args = array(
+    #     protected static \$available_args = array(
     #     'step' => array(
     #         'name' => 'step',
     #         'default' => 'all',
@@ -205,6 +205,274 @@ function availableArguments() {
     #         'help' => 'enable rewrite engine for PrestaShop',
     #     ),
     # );
+    PHP List of activities, /var/www/yourdomain/install/controllers/http/configure.php
+    #     \$list_activities = array(
+    #     1 => \$this->translator->trans('Lingerie and Adult', array(), 'Install'),
+    #     2 => \$this->translator->trans('Animals and Pets', array(), 'Install'),
+    #     3 => \$this->translator->trans('Art and Culture', array(), 'Install'),
+    #     4 => \$this->translator->trans('Babies', array(), 'Install'),
+    #     5 => \$this->translator->trans('Beauty and Personal Care', array(), 'Install'),
+    #     6 => \$this->translator->trans('Cars', array(), 'Install'),
+    #     7 => \$this->translator->trans('Computer Hardware and Software', array(), 'Install'),
+    #     8 => \$this->translator->trans('Download', array(), 'Install'),
+    #     9 => \$this->translator->trans('Fashion and accessories', array(), 'Install'),
+    #     10 => \$this->translator->trans('Flowers, Gifts and Crafts', array(), 'Install'),
+    #     11 => \$this->translator->trans('Food and beverage', array(), 'Install'),
+    #     12 => \$this->translator->trans('HiFi, Photo and Video', array(), 'Install'),
+    #     13 => \$this->translator->trans('Home and Garden', array(), 'Install'),
+    #     14 => \$this->translator->trans('Home Appliances', array(), 'Install'),
+    #     15 => \$this->translator->trans('Jewelry', array(), 'Install'),
+    #     16 => \$this->translator->trans('Mobile and Telecom', array(), 'Install'),
+    #     17 => \$this->translator->trans('Services', array(), 'Install'),
+    #     18 => \$this->translator->trans('Shoes and accessories', array(), 'Install'),
+    #     19 => \$this->translator->trans('Sports and Entertainment', array(), 'Install'),
+    #     20 => \$this->translator->trans('Travel', array(), 'Install'),
+    # );
+    Web Scrapping of List of countries from installer
+    # \$list_countries = array(
+    #     'fr' => 'Francia',
+    #     'es' => 'España',
+    #     'us' => 'Estados Unidos',
+    #     'gb' => 'Reino Unido',
+    #     'it' => 'Italia',
+    #     'de' => 'Alemania',
+    #     'nl' => 'Países Bajos',
+    #     'pl' => 'Polonia',
+    #     'id' => 'Indonesia',
+    #     'be' => 'Bélgica',
+    #     'br' => 'Brasil',
+    #     'se' => 'Suecia',
+    #     'ca' => 'Canadá',
+    #     'ru' => 'Rusia',
+    #     'cn' => 'China',
+    #     'af' => 'Afganistán',
+    #     'al' => 'Albania',
+    #     'ad' => 'Andorra',
+    #     'ao' => 'Angola',
+    #     'ai' => 'Anguila',
+    #     'ag' => 'Antigua y Barbuda',
+    #     'aq' => 'Antártida',
+    #     'sa' => 'Arabia Saudí',
+    #     'dz' => 'Argelia',
+    #     'ar' => 'Argentina',
+    #     'am' => 'Armenia',
+    #     'aw' => 'Aruba',
+    #     'au' => 'Australia',
+    #     'at' => 'Austria',
+    #     'az' => 'Azerbaiyán',
+    #     'bs' => 'Bahamas',
+    #     'bd' => 'Bangladés',
+    #     'bb' => 'Barbados',
+    #     'bh' => 'Baréin',
+    #     'bz' => 'Belice',
+    #     'bj' => 'Benín',
+    #     'bm' => 'Bermudas',
+    #     'by' => 'Bielorrusia',
+    #     'bo' => 'Bolivia',
+    #     'ba' => 'Bosnia y Herzegovina',
+    #     'bw' => 'Botsuana',
+    #     'bn' => 'Brunéi',
+    #     'bg' => 'Bulgaria',
+    #     'bf' => 'Burkina Faso',
+    #     'bi' => 'Burundi',
+    #     'bt' => 'Bután',
+    #     'cv' => 'Cabo Verde',
+    #     'kh' => 'Camboya',
+    #     'cm' => 'Camerún',
+    #     'qa' => 'Catar',
+    #     'td' => 'Chad',
+    #     'cz' => 'Chequia',
+    #     'cl' => 'Chile',
+    #     'cy' => 'Chipre',
+    #     'va' => 'Ciudad del Vaticano',
+    #     'co' => 'Colombia',
+    #     'km' => 'Comoras',
+    #     'cg' => 'Congo',
+    #     'kp' => 'Corea del Norte',
+    #     'kr' => 'Corea del Sur',
+    #     'cr' => 'Costa Rica',
+    #     'hr' => 'Croacia',
+    #     'cu' => 'Cuba',
+    #     'ci' => 'Côte d’Ivoire',
+    #     'dk' => 'Dinamarca',
+    #     'dm' => 'Dominica',
+    #     'ec' => 'Ecuador',
+    #     'eg' => 'Egipto',
+    #     'sv' => 'El Salvador',
+    #     'ae' => 'Emiratos Árabes Unidos',
+    #     'er' => 'Eritrea',
+    #     'sk' => 'Eslovaquia',
+    #     'si' => 'Eslovenia',
+    #     'ee' => 'Estonia',
+    #     'sz' => 'Esuatini',
+    #     'et' => 'Etiopía',
+    #     'ph' => 'Filipinas',
+    #     'fi' => 'Finlandia',
+    #     'fj' => 'Fiyi',
+    #     'ga' => 'Gabón',
+    #     'gm' => 'Gambia',
+    #     'ge' => 'Georgia',
+    #     'gh' => 'Ghana',
+    #     'gi' => 'Gibraltar',
+    #     'gd' => 'Granada',
+    #     'gr' => 'Grecia',
+    #     'gl' => 'Groenlandia',
+    #     'gp' => 'Guadalupe',
+    #     'gu' => 'Guam',
+    #     'gt' => 'Guatemala',
+    #     'gf' => 'Guayana Francesa',
+    #     'gg' => 'Guernsey',
+    #     'gn' => 'Guinea',
+    #     'gq' => 'Guinea Ecuatorial',
+    #     'gw' => 'Guinea-Bisáu',
+    #     'gy' => 'Guyana',
+    #     'ht' => 'Haití',
+    #     'hn' => 'Honduras',
+    #     'hu' => 'Hungría',
+    #     'in' => 'India',
+    #     'iq' => 'Irak',
+    #     'ie' => 'Irlanda',
+    #     'ir' => 'Irán',
+    #     'nf' => 'Isla Norfolk',
+    #     'im' => 'Isla de Man',
+    #     'cx' => 'Isla de Navidad',
+    #     'is' => 'Islandia',
+    #     'ky' => 'Islas Caimán',
+    #     'cc' => 'Islas Cocos',
+    #     'ck' => 'Islas Cook',
+    #     'fo' => 'Islas Feroe',
+    #     'gs' => 'Islas Georgia del Sur y Sandwich del Sur',
+    #     'fk' => 'Islas Malvinas',
+    #     'mp' => 'Islas Marianas del Norte',
+    #     'mh' => 'Islas Marshall',
+    #     'pn' => 'Islas Pitcairn',
+    #     'sb' => 'Islas Salomón',
+    #     'tc' => 'Islas Turcas y Caicos',
+    #     'vg' => 'Islas Vírgenes Británicas',
+    #     'vi' => 'Islas Vírgenes de EE. UU.',
+    #     'ax' => 'Islas Åland',
+    #     'il' => 'Israel',
+    #     'jm' => 'Jamaica',
+    #     'jp' => 'Japón',
+    #     'je' => 'Jersey',
+    #     'jo' => 'Jordania',
+    #     'kz' => 'Kazajistán',
+    #     'ke' => 'Kenia',
+    #     'kg' => 'Kirguistán',
+    #     'ki' => 'Kiribati',
+    #     'kw' => 'Kuwait',
+    #     'la' => 'Laos',
+    #     'ls' => 'Lesoto',
+    #     'lv' => 'Letonia',
+    #     'lr' => 'Liberia',
+    #     'ly' => 'Libia',
+    #     'li' => 'Liechtenstein',
+    #     'lt' => 'Lituania',
+    #     'lu' => 'Luxemburgo',
+    #     'lb' => 'Líbano',
+    #     'mk' => 'Macedonia del Norte',
+    #     'mg' => 'Madagascar',
+    #     'my' => 'Malasia',
+    #     'mw' => 'Malaui',
+    #     'mv' => 'Maldivas',
+    #     'ml' => 'Mali',
+    #     'mt' => 'Malta',
+    #     'ma' => 'Marruecos',
+    #     'mq' => 'Martinica',
+    #     'mu' => 'Mauricio',
+    #     'mr' => 'Mauritania',
+    #     'yt' => 'Mayotte',
+    #     'fm' => 'Micronesia',
+    #     'md' => 'Moldavia',
+    #     'mn' => 'Mongolia',
+    #     'me' => 'Montenegro',
+    #     'ms' => 'Montserrat',
+    #     'mz' => 'Mozambique',
+    #     'mm' => 'Myanmar (Birmania)',
+    #     'mx' => 'México',
+    #     'mc' => 'Mónaco',
+    #     'na' => 'Namibia',
+    #     'nr' => 'Nauru',
+    #     'np' => 'Nepal',
+    #     'ni' => 'Nicaragua',
+    #     'ng' => 'Nigeria',
+    #     'nu' => 'Niue',
+    #     'no' => 'Noruega',
+    #     'nc' => 'Nueva Caledonia',
+    #     'nz' => 'Nueva Zelanda',
+    #     'ne' => 'Níger',
+    #     'om' => 'Omán',
+    #     'pk' => 'Pakistán',
+    #     'pw' => 'Palaos',
+    #     'pa' => 'Panamá',
+    #     'pg' => 'Papúa Nueva Guinea',
+    #     'py' => 'Paraguay',
+    #     'pe' => 'Perú',
+    #     'pf' => 'Polinesia Francesa',
+    #     'pt' => 'Portugal',
+    #     'pr' => 'Puerto Rico',
+    #     'hk' => 'RAE de Hong Kong (China)',
+    #     'mo' => 'RAE de Macao (China)',
+    #     'cf' => 'República Centroafricana',
+    #     'cd' => 'República Democrática del Congo',
+    #     'do' => 'República Dominicana',
+    #     're' => 'Reunión',
+    #     'rw' => 'Ruanda',
+    #     'ro' => 'Rumanía',
+    #     'ws' => 'Samoa',
+    #     'as' => 'Samoa Americana',
+    #     'bl' => 'San Bartolomé',
+    #     'kn' => 'San Cristóbal y Nieves',
+    #     'sm' => 'San Marino',
+    #     'mf' => 'San Martín',
+    #     'pm' => 'San Pedro y Miquelón',
+    #     'vc' => 'San Vicente y las Granadinas',
+    #     'lc' => 'Santa Lucía',
+    #     'st' => 'Santo Tomé y Príncipe',
+    #     'sn' => 'Senegal',
+    #     'rs' => 'Serbia',
+    #     'sc' => 'Seychelles',
+    #     'sl' => 'Sierra Leona',
+    #     'sg' => 'Singapur',
+    #     'sy' => 'Siria',
+    #     'so' => 'Somalia',
+    #     'lk' => 'Sri Lanka',
+    #     'za' => 'Sudáfrica',
+    #     'sd' => 'Sudán',
+    #     'ch' => 'Suiza',
+    #     'sr' => 'Surinam',
+    #     'sj' => 'Svalbard y Jan Mayen',
+    #     'eh' => 'Sáhara Occidental',
+    #     'th' => 'Tailandia',
+    #     'tw' => 'Taiwán',
+    #     'tz' => 'Tanzania',
+    #     'tj' => 'Tayikistán',
+    #     'io' => 'Territorio Británico del Océano Índico',
+    #     'tf' => 'Territorios Australes Franceses',
+    #     'ps' => 'Territorios Palestinos',
+    #     'tl' => 'Timor-Leste',
+    #     'tg' => 'Togo',
+    #     'tk' => 'Tokelau',
+    #     'to' => 'Tonga',
+    #     'tt' => 'Trinidad y Tobago',
+    #     'tm' => 'Turkmenistán',
+    #     'tr' => 'Turquía',
+    #     'tv' => 'Tuvalu',
+    #     'tn' => 'Túnez',
+    #     'ua' => 'Ucrania',
+    #     'ug' => 'Uganda',
+    #     'uy' => 'Uruguay',
+    #     'uz' => 'Uzbekistán',
+    #     'vu' => 'Vanuatu',
+    #     've' => 'Venezuela',
+    #     'vn' => 'Vietnam',
+    #     'wf' => 'Wallis y Futuna',
+    #     'ye' => 'Yemen',
+    #     'dj' => 'Yibuti',
+    #     'zm' => 'Zambia',
+    #     'zw' => 'Zimbabue'
+    # );
+
     "
 }
 
@@ -261,7 +529,7 @@ function install() {
                 _die "rm ${zipFile} failed !"
             }
         fi
-        if ! _checkUrl "https://download.prestashop.com/download/releases/${zipFile}"; then
+        if ! _checkUrl -l="https://download.prestashop.com/download/releases/${zipFile}"; then
             _die "Prestashop version $PS_VERSION not found !"
         fi
     fi
@@ -286,15 +554,18 @@ function install() {
     mv "${WEB_DIR}/${DOMAIN}"/prestashop/* "${WEB_DIR}/${DOMAIN}"
     rm -rf "${WEB_DIR}/${DOMAIN}"/prestashop
 
+    # chmod folders to 755 and files to 644
+    find "${WEB_DIR}/${DOMAIN}/" -type d -exec chmod 0755 {} \;
+    find "${WEB_DIR}/${DOMAIN}/" -type f -exec chmod 0644 {} \;
+
     # Add write permissions for config files
     find "${WEB_DIR}/${DOMAIN}/" -exec chown $WEB_USER:$WEB_USER {} \;
     local installDir="${WEB_DIR}/${DOMAIN}/install"
     php "${WEB_DIR}/${DOMAIN}/install/index_cli.php" "${INSTALL_ARGS}" && {
         _success "Prestashop installed successfully !"
-        _success "You can access your store at http://${DOMAIN}/"
-        _success "Admin panel is at http://${DOMAIN}/admin"
-        _success "Admin login: ${ADMIN_EMAIL}"
-        _success "Admin password: ${ADMIN_PASSWORD}"
+        echo "You can access your Prestashop at http://${DOMAIN}/"
+        echo "Admin panel: http://${DOMAIN}/admin"
+
     } || {
         _die "Prestashop installation failed !"
     }
@@ -304,9 +575,6 @@ function install() {
             _die "rm ${installDir} failed !"
         }
     fi
-    # chmod folders to 755 and files to 644
-    find "${WEB_DIR}/${DOMAIN}/" -type d -exec chmod 0755 {} \;
-    find "${WEB_DIR}/${DOMAIN}/" -type f -exec chmod 0644 {} \;
 }
 
 #

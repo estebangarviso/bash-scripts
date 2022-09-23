@@ -33,7 +33,7 @@ server {
     error_log $LOGS_DIR/nginx/$DOMAIN/error.log;
 
     # Your admin folder
-    set \$admin_dir /$ADMIN_DIRNAME;
+    set \$admin_dir /$CMS_ADMIN_DIRNAME;
 
     # Gzip Settings, convert all types.
     gzip on;

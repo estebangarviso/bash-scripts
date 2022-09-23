@@ -3,7 +3,7 @@
 source "$(pwd)/core/lib.sh"
 
 # Sanity check
-_checkRoot
+_checkSanity
 
 #
 # FUNCTIONS

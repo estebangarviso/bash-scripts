@@ -3,7 +3,7 @@
 source "$(pwd)/core/lib.sh"
 
 # Sanity check
-_checkRoot
+_checkSanity
 
 #
 # FUNCTIONS
@@ -35,6 +35,9 @@ Version $VERSION
 
     Options:
         -c, --cms                   CMS to install (default: prestashop)
+        -ic, --iso-code             ISO code (default: en)
+        -t, --timezone              Timezone (default: America/Toronto)
+        -act, --activity            Activity (default: 17; 17 = Services)
         -d, --domain                Domain name (mandatory)
         -u, --user                  FTP user (mandatory) # TODO
         -sa, --super-admin          CMS super admin email (mandatory)
@@ -63,14 +66,37 @@ function processArgs() {
         -ic=* | --iso-code=*)
             CMS_ISO_CODE="${arg#*=}"
             ;;
+        -t=* | --timezone=*)
+            CMS_TIMEZONE="${arg#*=}"
+            ;;
+        -co=* | --country=*)
+            CMS_COUNTRY="${arg#*=}"
+            ;;
+        -ac=* | --activity=*)
+            CMS_ACTIVITY="${arg#*=}"
+            # Validate activity for Prestashop
+            if [ "$CMS" = "prestashop" ]; then
+                if [ "$CMS_ACTIVITY" -lt 1 ] || [ "$CMS_ACTIVITY" -gt 20 ]; then
+                    _die "Activity must be between 1 and 20, check your activity number on file ./cloud/cms/prestashop/install.sh search \$list_activity"
+                fi
+            fi
+            ;;
         -d=* | --domain=*)
             DOMAIN="${arg#*=}"
+            # Validate domain eg. domain.com, sub.domain.com, domain.co.uk, domain.academy, domain.io
+            if ! _validateDomain "$DOMAIN"; then
+                _die "Invalid domain name"
+            fi
             ;;
         # -u=* | --user=*)
-        #     USER="${arg#*=}"
+        #     FTP_USER="${arg#*=}"
         #     ;;
         -sa=* | --super-admin=*)
             SUPER_ADMIN="${arg#*=}"
+            # Validate email
+            if ! _validateEmail "$SUPER_ADMIN"; then
+                _die "Super admin email ${SUPER_ADMIN} is not valid"
+            fi
             ;;
         -sap=* | --super-admin-pass=*)
             SUPER_ADMIN_PASS="${arg#*=}"
@@ -92,69 +118,90 @@ function processArgs() {
             ;;
         esac
     done
-    if [ ! " ${ALLOWED_CMS[@]} " =~ " ${CMS} " ]; then
+    if [[ ! " ${ALLOWED_CMS[@]} " =~ " ${CMS} " ]]; then
         _die "CMS not allowed!"
     fi
     if [ -z $DOMAIN ]; then
         _die "Domain name cannot be empty."
     fi
     if [ -z $SUPER_ADMIN ]; then
-        _die "Super admin email cannot be empty."
+        SUPER_ADMIN="admin@$DOMAIN"
     fi
     # if [ -z $ADMIN ]; then
     #     _die "Admin email cannot be empty."
     # fi
-    # if [ -z $USER ]; then
-    #     USER=$(echo $DOMAIN | cut -d. -f1)
+    # if [ -z $FTP_USER ]; then
+    #     FTP_USER=$(echo $DOMAIN | cut -d. -f1)
     # fi
     # local userCounter=0
-    # if id -u "$USER" >/dev/null 2>&1; then
-    #     while id -u "$USER$userCounter" >/dev/null 2>&1; do
+    # if id -u "$FTP_USER" >/dev/null 2>&1; then
+    #     while id -u "$FTP_USER$userCounter" >/dev/null 2>&1; do
     #         ((userCounter++))
     #     done
-    #     USER="$USER$userCounter"
+    #     FTP_USER="$FTP_USER$userCounter"
     # fi
     local tableSuffix="ps"
     if [ $CMS == "prestashop" ]; then
-        DB_SUFFIX=$(echo $CMS | cut -c1-4)
-        DB_TABLE_PREFIX=$(echo "$tableSuffix$(_generateRandomNumbers 3)_")
+        CMS_DB_SUFFIX=$(echo $CMS | cut -c1-4)
+        CMS_DB_TABLE_PREFIX=$(echo "$tableSuffix$(_generateRandomNumbers 3)_")
         # Refresh VERSION
         CMS_COMPRESSED_FILE="prestashop_${CMS_VERSION}.zip"
         CMS_DOWNLOAD_URL="https://download.prestashop.com/download/releases/${CMS_COMPRESSED_FILE}"
+        CMS_INSTALL_ARGS=(
+            --language=$CMS_ISO_CODE
+            --timezone=$CMS_TIMEZONE
+            --country=$CMS_COUNTRY
+            --domain=$DOMAIN
+            --prefix=$CMS_DB_TABLE_PREFIX
+            --shop_name=$(_capitalize $DOMAIN)
+            --shop_activity=$CMS_ACTIVITY
+            --email=$SUPER_ADMIN
+            --password=$SUPER_ADMIN_PASS
+            --firstname="Admin"
+            --lastname=$(_capitalize ${DOMAIN%%.*})
+            --newsletter=0
+            --ssl=1
+        )
     fi
-    # TODO: Add DB_SUFFIX and DB_TABLE_PREFIX for other CMS
+    # TODO: Add CMS_DB_SUFFIX and CMS_DB_TABLE_PREFIX for other CMS
+    echo "${CMS_INSTALL_ARGS[@]}"
+    exit 1
 }
 
 function generatePassword() {
-    local length=$1
-    [[ -z "$length" ]] && length=12
+    local length=${1:-12}
     echo "$(openssl rand -base64 $length)"
 }
 
 function generateRandomString() {
-    local length=$1
-    if [ -z "$length" ]; then
-        length=32
-    fi
+    local length=${1:-32}
     local randomString=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1)
     echo $randomString
 }
 
 function update() {
     _header "Updating system"
-    apt update -y && apt upgrade -y
-    _header "Installing software-properties-common and apt-transport-https"
-    apt install software-properties-common apt-transport-https -y
-    _header "Import PHP Repository"
-    add-apt-repository ppa:ondrej/php -y
-    _header "Updating system again after adding PHP repository"
-    apt update -y && apt upgrade -y
-    _success "System updated"
+    if [ $OSTYPE == "linux-gnu" ]; then
+        apt update -y && apt upgrade -y
+        _header "Installing software-properties-common and apt-transport-https"
+        apt install software-properties-common apt-transport-https -y
+        _header "Import PHP Repository"
+        add-apt-repository ppa:ondrej/php -y
+        _header "Updating system again after adding PHP repository"
+        apt update -y && apt upgrade -y
+        _success "System updated"
+    elif [ $OSTYPE == "darwin"* ]; then
+        brew update
+        brew upgrade
+        _success "System updated"
+    fi
 }
 
 function install() {
-    _header "Installing $CMS"
+    _header "Installing CMS"
     # Check CMS Before Install
+    _bold "Checking $CMS on the web..."
+    _underline "Stay connected to the internet !"
     cd $WEB_DIR
     if [ -d "${WEB_DIR}/${DOMAIN}" ]; then
         _die "${WEB_DIR}/${DOMAIN} already exists! Please backup your data outside ${WEB_DIR} or remove it."
@@ -165,34 +212,33 @@ function install() {
             _die "rm ${CMS_COMPRESSED_FILE} failed !"
         }
     fi
-    if ! _checkUrl $CMS_DOWNLOAD_URL; then
+    if ! _checkUrl -l=$CMS_DOWNLOAD_URL; then
         _die "Prestashop version $CMS_VERSION not found in $CMS_DOWNLOAD_URL, please check the version number or the URL."
     fi
     # Add PHP version to CMS dependencies
     for dep in $CMS_DEPENDENCIES; do
         if [[ $dep =~ ^php- ]]; then
             local newDep="${dep/php-/php$PHP_VERSION-}"
-            CMS_DEPENDENCIES=$(echo $CMS_DEPENDENCIES | sed "s/$dep/$newDep/g")
+            CMS_DEPENDENCIES=$(echo ${CMS_DEPENDENCIES} | sed "s/$dep/$newDep/g")
         fi
         if [[ $dep =~ -php$ ]]; then
             local newDep="${dep/-php/-php$PHP_VERSION}"
-            CMS_DEPENDENCIES=$(echo $CMS_DEPENDENCIES | sed "s/$dep/$newDep/g")
+            CMS_DEPENDENCIES=$(echo ${CMS_DEPENDENCIES} | sed "s/$dep/$newDep/g")
         fi
     done
+    _success "Checking $CMS on the web... OK"
     # Installing packages
-    # mariadb-server and mariadb-client will be installed in mariadb/install.sh
+    _bold "Installing packages..."
     apt install -y $CMS_DEPENDENCIES
-
     _success "Packages installed!"
 
     # Installing and securing MariaDB
     source "$(pwd)/cloud/mariadb/install.sh"
 
     # Create database
-    local databaseName=$(echo $DOMAIN | cut -d. -f1)
-    source "$(pwd)/cloud/mariadb/create-database.sh" -db="${databaseName}${DB_SUFFIX}" -r
+    local databaseName=$(echo ${DOMAIN} | cut -d. -f1)
+    source "$(pwd)/cloud/mariadb/create-database.sh" -db="${databaseName}${CMS_DB_SUFFIX}" -r
     _addMessage "<h3>Database</h3>" "success"
-    _addMessage "Host: localhost" "success"
     _addMessage "Database: ${DB_NAME}" "success"
     _addMessage "User: ${DB_USER}" "success"
     _addMessage "Password: ${DB_PASS}" "success"
@@ -202,44 +248,47 @@ function install() {
     PHP_VERSION_SHORT=$(echo $PHP_VERSION | sed 's/\([0-9]\)\.\([0-9]\).*/\1\2/')
     _success "PHP version: $PHP_VERSION"
 
-    # Set CMS_INSTALL_ARGS
-    CMS_INSTALL_ARGS=(
-        --domain=$DOMAIN
+    # Append database arguments to CMS_INSTALL_ARGS
+    CMS_INSTALL_ARGS+=(
         --db_name=$DB_NAME
         --db_user=$DB_USER
-        --db_pass=$DB_PASS
-        --prefix=$DB_TABLE_PREFIX
+        --db_password=$DB_PASS
     )
     # Install CMS
     _header "Installing $CMS through CLI"
-    source "$(pwd)/cloud/$CMS/install.sh" --notci --ia $()
+    source "$(pwd)/cloud/$CMS/install.sh" --notci --ia $CMS_INSTALL_ARGS
+    _success "$CMS installed through CLI successfully"
 
     # Set by operating system
     if [ "$OSTYPE" == "darwin"* ]; then
         if $(uname -m) == "arm64"; then
             ETC_DIR="/opt/homebrew/etc"
+            WEB_DIR="/opt/homebrew/var/www"
+            LOGS_DIR="/opt/homebrew/var/log"
         else
             ETC_DIR="/usr/local/etc"
+            WEB_DIR="/usr/local/var/www"
+            LOGS_DIR="/usr/local/var/log"
         fi
     fi
 }
 
 # TODO: Add feacture to access via FTP and SFTP for user
-function createUser() {
+function createFTPUser() {
     # Check if user exists and create it if not
-    if id -u $USER >/dev/null 2>&1; then
-        _success "User $USER already exists"
+    if id -u $FTP_USER >/dev/null 2>&1; then
+        _success "User $FTP_USER already exists"
     else
         # Create a standard user account
-        _header "Creating user $USER"
-        useradd -s /bin/bash -m -d /home/$USER $USER
-        USER_PWD=$(generatePassword)
-        echo "$USER:$USER_PWD" | chpasswd
-        _success "User $USER created!"
+        _header "Creating user $FTP_USER"
+        useradd -s /bin/bash -m -d /home/$FTP_USER $FTP_USER
+        FTP_USER_PWD=$(generatePassword)
+        echo "$FTP_USER:$FTP_USER_PWD" | chpasswd
+        _success "User $FTP_USER created!"
         _addMessage "<h3>User</h3>" "success"
-        _addMessage "User: $USER" "success"
-        _addMessage "Password: $USER_PWD" "success"
-        _addMessage "Home: /home/$USER" "success"
+        _addMessage "User: $FTP_USER" "success"
+        _addMessage "Password: $FTP_USER_PWD" "success"
+        _addMessage "Home: /home/$FTP_USER" "success"
     fi
 }
 
@@ -282,31 +331,31 @@ function configurePhp() {
     local opcache_enable_file_override="0"
     local opcache_max_file_size="0"
 
-    _sed ";date.timezone =.*" "date.timezone = $date_timezone" "$phpIniFile"
-    _sed ";session.auto_start =.*" "session.auto_start = $session_auto_start" "$phpIniFile"
-    _sed ";short_open_tag =.*" "short_open_tag = $short_open_tag" "$phpIniFile"
-    _sed ";display_errors =.*" "display_errors = $display_errors" "$phpIniFile"
-    _sed ";magic_quotes_gpc =.*" "magic_quotes_gpc = $magic_quotes_gpc" "$phpIniFile"
-    _sed ";memory_limit =.*" "memory_limit = $memory_limit" "$phpIniFile"
-    _sed ";max_execution_time =.*" "max_execution_time = $max_execution_time" "$phpIniFile"
-    _sed ";max_input_time =.*" "max_input_time = $max_input_time" "$phpIniFile"
-    _sed ";upload_max_filesize =.*" "upload_max_filesize = $upload_max_filesize" "$phpIniFile"
-    _sed ";post_max_size =.*" "post_max_size = $post_max_size" "$phpIniFile"
-    _sed ";max_input_vars =.*" "max_input_vars = $max_input_vars" "$phpIniFile"
-    _sed ";allow_url_fopen =.*" "allow_url_fopen = $allow_url_fopen" "$phpIniFile"
-    _sed ";safe_mode =.*" "safe_mode = $safe_mode" "$phpIniFile"
-    _sed ";realpath_cache_size =.*" "realpath_cache_size = $realpath_cache_size" "$phpIniFile"
-    _sed ";realpath_cache_ttl =.*" "realpath_cache_ttl = $realpath_cache_ttl" "$phpIniFile"
-    _sed ";opcache.enable =.*" "opcache.enable = $opcache_enabled" "$phpIniFile"
-    _sed ";opcache.enable_cli =.*" "opcache.enable_cli = $opcache_enable_cli" "$phpIniFile"
-    _sed ";opcache.memory_consumption =.*" "opcache.memory_consumption = $opcache_memory_consumption" "$phpIniFile"
-    _sed ";opcache.interned_strings_buffer =.*" "opcache.interned_strings_buffer = $opcache_interned_strings_buffer" "$phpIniFile"
-    _sed ";opcache.max_accelerated_files =.*" "opcache.max_accelerated_files = $opcache_max_accelerated_files" "$phpIniFile"
-    _sed ";opcache.max_wasted_percentage =.*" "opcache.max_wasted_percentage = $opcache_max_wasted_percentage" "$phpIniFile"
-    _sed ";opcache.revalidate_freq =.*" "opcache.revalidate_freq = $opcache_revalidate_freq" "$phpIniFile"
-    _sed ";opcache.fast_shutdown =.*" "opcache.fast_shutdown = $opcache_fast_shutdown" "$phpIniFile"
-    _sed ";opcache.enable_file_override =.*" "opcache.enable_file_override = $opcache_enable_file_override" "$phpIniFile"
-    _sed ";opcache.max_file_size =.*" "opcache.max_file_size = $opcache_max_file_size" "$phpIniFile"
+    _sed ";date.timezone =.*" "date.timezone = $date_timezone" "${phpIniFile}"
+    _sed ";session.auto_start =.*" "session.auto_start = $session_auto_start" "${phpIniFile}"
+    _sed ";short_open_tag =.*" "short_open_tag = $short_open_tag" "${phpIniFile}"
+    _sed ";display_errors =.*" "display_errors = $display_errors" "${phpIniFile}"
+    _sed ";magic_quotes_gpc =.*" "magic_quotes_gpc = $magic_quotes_gpc" "${phpIniFile}"
+    _sed ";memory_limit =.*" "memory_limit = $memory_limit" "${phpIniFile}"
+    _sed ";max_execution_time =.*" "max_execution_time = $max_execution_time" "${phpIniFile}"
+    _sed ";max_input_time =.*" "max_input_time = $max_input_time" "${phpIniFile}"
+    _sed ";upload_max_filesize =.*" "upload_max_filesize = $upload_max_filesize" "${phpIniFile}"
+    _sed ";post_max_size =.*" "post_max_size = $post_max_size" "${phpIniFile}"
+    _sed ";max_input_vars =.*" "max_input_vars = $max_input_vars" "${phpIniFile}"
+    _sed ";allow_url_fopen =.*" "allow_url_fopen = $allow_url_fopen" "${phpIniFile}"
+    _sed ";safe_mode =.*" "safe_mode = $safe_mode" "${phpIniFile}"
+    _sed ";realpath_cache_size =.*" "realpath_cache_size = $realpath_cache_size" "${phpIniFile}"
+    _sed ";realpath_cache_ttl =.*" "realpath_cache_ttl = $realpath_cache_ttl" "${phpIniFile}"
+    _sed ";opcache.enable =.*" "opcache.enable = $opcache_enabled" "${phpIniFile}"
+    _sed ";opcache.enable_cli =.*" "opcache.enable_cli = $opcache_enable_cli" "${phpIniFile}"
+    _sed ";opcache.memory_consumption =.*" "opcache.memory_consumption = $opcache_memory_consumption" "${phpIniFile}"
+    _sed ";opcache.interned_strings_buffer =.*" "opcache.interned_strings_buffer = $opcache_interned_strings_buffer" "${phpIniFile}"
+    _sed ";opcache.max_accelerated_files =.*" "opcache.max_accelerated_files = $opcache_max_accelerated_files" "${phpIniFile}"
+    _sed ";opcache.max_wasted_percentage =.*" "opcache.max_wasted_percentage = $opcache_max_wasted_percentage" "${phpIniFile}"
+    _sed ";opcache.revalidate_freq =.*" "opcache.revalidate_freq = $opcache_revalidate_freq" "${phpIniFile}"
+    _sed ";opcache.fast_shutdown =.*" "opcache.fast_shutdown = $opcache_fast_shutdown" "${phpIniFile}"
+    _sed ";opcache.enable_file_override =.*" "opcache.enable_file_override = $opcache_enable_file_override" "${phpIniFile}"
+    _sed ";opcache.max_file_size =.*" "opcache.max_file_size = $opcache_max_file_size" "${phpIniFile}"
 }
 
 function configurePhpFpm() {
@@ -392,9 +441,15 @@ function startServices() {
     case "$OSTYPE" in
     linux*)
         # start Nginx, PHP and MariaDB
-        systemctl start nginx
-        systemctl start php$PHP_VERSION-fpm
-        systemctl start mariadb
+        pidof systemd && {
+            systemctl start nginx
+            systemctl start php$PHP_VERSION-fpm
+            systemctl start mariadb
+        } || {
+            service nginx start
+            service php$PHP_VERSION-fpm start
+            service mariadb start
+        }
         ;;
     darwin*)
         # Check if brew is installed
@@ -432,30 +487,37 @@ DOMAIN=
 ALLOWED_CMS=("prestashop") # TODO: add more CMS
 WEB_DIR="/var/www"
 WEB_USER="www-data"
-# USER=
-# USER_PWD=
+FTP_USER=
+FTP_USER_PWD=
 
 CMS="prestashop"
 CMS_INSTALL_ARGS=()
 CMS_VERSION="1.7.6.9"
+# mariadb-server and mariadb-client will be installed with mariadb/install.sh
 CMS_DEPENDENCIES="nginx php-fpm php-common php-mysql php-gmp php-curl php-intl php-mbstring php-xmlrpc php-gd php-bcmath php-imap php-xml php-cli php-zip unzip wget git curl"
 CMS_COMPRESSED_FILE="prestashop_${CMS_VERSION}.zip"
 CMS_DOWNLOAD_URL="https://download.prestashop.com/download/releases/${CMS_COMPRESSED_FILE}"
 CMS_ISO_CODE="en"
-ADMIN_DIRNAME="admin$(generateRandomString 10)"
+CMS_TIMEZONE="America/Toronto"
+CMS_COUNTRY="ca"
+CMS_DB_SUFFIX=
+CMS_DB_TABLE_PREFIX=
+CMS_ADMIN_DIRNAME="admin$(generateRandomString 10)"
+CMS_ACTIVITY=17
 SUPER_ADMIN=
 SUPER_ADMIN_PASS="$(generatePassword)"
-# ADMIN=
-# ADMIN_PASS="$(generatePassword)"
+ADMIN=
+ADMIN_PASS="$(generatePassword)"
 
-NGINX_AVAILABLE_VHOSTS_DIR="$ETC_DIR/nginx/sites-available"
-NGINX_ENABLED_VHOSTS_DIR="$ETC_DIR/nginx/sites-enabled"
+NGINX_AVAILABLE_VHOSTS_DIR="${ETC_DIR}/nginx/sites-available"
+NGINX_ENABLED_VHOSTS_DIR="${ETC_DIR}/nginx/sites-enabled"
 
-PHP_VERSION="7.4"
+DB_NAME=
+DB_USER=
+DB_PASS=
+
+PHP_VERSION="7.2" # Recommended PHP version for PrestaShop 1.7.6.9
 PHP_VERSION_SHORT=
-
-DB_SUFFIX=
-DB_TABLE_PREFIX=
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -464,13 +526,14 @@ function main() {
     # Process arguments
     processArgs "$@"
 
+    # (L)
     # Update VM
     update
 
     # # Create User
-    # createUser
+    # createFTPUser
 
-    # Install (L)
+    # Install
     install
 
     # Configure Nginx (E)

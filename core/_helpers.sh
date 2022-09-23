@@ -28,7 +28,7 @@ function _sed() {
 }
 
 function _generateRandomNumbers() {
-    local length=$1
+    local length=${1:-12}
     echo $(cat /dev/urandom | tr -dc '0-9' | fold -w $length | head -n 1)
 }
 
@@ -53,20 +53,62 @@ function _typeExists() {
     return 1
 }
 
-function _checkRoot() {
+function _checkSanity() {
     if [ "$(whoami)" != 'root' ] || [[ $EUID -ne 0 ]]; then
-        echo "You have no permission to run $0 as non-root user. Use sudo"
+        printf "You have no permission to run $0 as non-root user. Use sudo\n"
         exit 1
+    fi
+    # Check if the script is being run on a supported OS
+    if [[ ! $(uname -s | grep -i darwin) ]] && [[ ! $(uname -s | grep -i linux) ]]; then
+        printf "This script only supports Linux and macOS\n"
+        exit 1
+    fi
+    local binBash=$(which bash)
+    # Check if brew is installed on macOS, if not, install it
+    if [[ $(uname -s | grep -i darwin) ]] && [[ ! $(which brew) ]]; then
+        printf "Installing brew...\n"
+        binBash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        printf "Brew installed\n"
     fi
 }
 
 function _sendEmail() {
-    local to=$1
-    local subject=$2
-    local body=$3
-    local from=$4
+    local to=
+    local subject=
+    local body=
+    local from=
+    for i in "$@"; do
+        case $i in
+        -t=* | --to=*)
+            to="${i#*=}"
+            shift
+            ;;
+        -s=* | --subject=*)
+            subject="${i#*=}"
+            shift
+            ;;
+        -b=* | --body=*)
+            body="${i#*=}"
+            shift
+            ;;
+        -f=* | --from=*)
+            from="${i#*=}"
+            shift
+            ;;
+        *)
+            printf "Unknown option: $i"
+            ;;
+        esac
+    done
     if [ -z "$from" ]; then
         from="no-reply@$(hostname)"
+    fi
+    if [[ -z "$to" ]] || [[ -z "$subject" ]] || [[ -z "$body" ]]; then
+        printf "You must specify all the required parameters which are:\n"
+        printf " -t, --to: the recipient of the email\n"
+        printf " -s, --subject: the subject of the email\n"
+        printf " -b, --body: the body of the email\n"
+        return 1
     fi
     echo "$body" | mail -s "$subject" -r "$from" "$to"
 }
@@ -77,7 +119,23 @@ function _getPublicIP() {
 }
 
 function _checkUrl() {
-    local link=$1
+    local link=
+    for i in "$@"; do
+        case $i in
+        -l=* | --link=*)
+            link="${i#*=}"
+            shift
+            ;;
+        *)
+            printf "Unknown option: $i\n"
+            ;;
+        esac
+    done
+    if [[ -z "$link" ]]; then
+        printf "You must specify all the required parameters which are:\n"
+        printf " -l, --link: the link to check\n"
+        return 1
+    fi
 
     if which wget >/dev/null; then
         wget -q --spider $link
@@ -123,6 +181,22 @@ function _upperCase() {
 
 function _capitalize() {
     echo "$@" | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1'
+}
+
+function _validateEmail() {
+    local email=$@
+    if [[ $email =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$ ]]; then
+        return 0
+    fi
+    return 1
+}
+
+function _validateDomain() {
+    local domain=$@
+    if [[ $domain =~ ^([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]\.)+[a-zA-Z]{2,}$ ]]; then
+        return 0
+    fi
+    return 1
 }
 
 function _printPoweredBy() {
