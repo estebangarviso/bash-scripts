@@ -53,7 +53,6 @@ exec 2>"$stderr_log"
 ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 
 function sendReport() {
-    # Copy _email.template.html to email.html
     local email_subject="Script $0 execution report from $(hostname)"
     if [[ ! -z $_SCRIPT_EMAIL_NOTIFIER ]]; then
         _sendEmail --subject="${email_subject}" --to="$_SCRIPT_EMAIL_NOTIFIER" --body="$(cat "$_log_file")"
