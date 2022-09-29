@@ -13,6 +13,14 @@ else
     g_libs+=("$lib_name_helpers@$lib_version_helpers")
 fi
 
+# Check if _variables.sh is already in the array g_libs if not show error and exit
+if [[ " ${g_libs[*]} " =~ " ${lib_name_variables}@${lib_version_variables} " ]]; then
+    :
+else
+    echo "ERROR: ${lib_name_variables} is not loaded"
+    exit 1
+fi
+
 #
 # UTILITY HELPER
 #
@@ -21,9 +29,17 @@ function _sed() {
     local replace=$2
     local file=$3
     if [[ $(uname -s | grep -i darwin) ]]; then
-        sed -i '' "s/$search/$replace/g" $file
+        sed -i '' "s/$search/$replace/g" $file && {
+            return 0
+        } || {
+            return 1
+        }
     else
-        sed -i "s/$search/$replace/g" $file
+        sed -i "s/$search/$replace/g" $file && {
+            return 0
+        } || {
+            return 1
+        }
     fi
 }
 
@@ -91,18 +107,9 @@ function _sendEmail() {
             body="${i#*=}"
             shift
             ;;
-        -f=* | --from=*)
-            from="${i#*=}"
-            shift
-            ;;
-        *)
-            printf "Unknown option: $i"
-            ;;
         esac
     done
-    if [ -z "$from" ]; then
-        from="no-reply@$(hostname)"
-    fi
+
     if [[ -z "$to" ]] || [[ -z "$subject" ]] || [[ -z "$body" ]]; then
         printf "You must specify all the required parameters which are:\n"
         printf " -t, --to: the recipient of the email\n"
@@ -110,7 +117,213 @@ function _sendEmail() {
         printf " -b, --body: the body of the email\n"
         return 1
     fi
-    echo "$body" | mail -s "$subject" -r "$from" "$to"
+    mail -s "$subject" "$to" <<<"$body" && {
+        _success "Email sent successfully"
+        return 0
+    } || {
+        _error "Failed to send email"
+        return 1
+    }
+}
+
+function _addError() {
+    if [[ -z "$1" ]]; then
+        return 1
+    fi
+    local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+    if [ -z "$_errors" ]; then
+        _errors="[ERROR] $timestamp: $1"
+    else
+        _errors="$_errors\n[ERROR] $timestamp: $1"
+    fi
+}
+
+function _addWarning() {
+    if [[ -z "$1" ]]; then
+        return 1
+    fi
+    local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+    if [ -z "$_warnings" ]; then
+        _warnings="[WARNING] $timestamp: $1"
+    else
+        _warnings="$_warnings\n[WARNING] $timestamp: $1"
+    fi
+}
+
+function _addSuccess() {
+    if [[ -z "$1" ]]; then
+        return 1
+    fi
+    local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+    if [ -z "$_successes" ]; then
+        _successes="[SUCCESS] $timestamp: $1"
+    else
+        _successes="$_successes\n[SUCCESS] $timestamp: $1"
+    fi
+}
+
+function _addMessage() {
+    local message=$1
+    local type
+    if [[ -z "$message" ]]; then
+        return 1
+    fi
+    [[ -z "$2" ]] && type="" || type="$2"
+    case $type in
+    "error")
+        _addError "$message"
+        ;;
+    "warning")
+        _addWarning "$message"
+        ;;
+    "success")
+        _addSuccess "$message"
+        ;;
+    esac
+}
+
+function _startService() {
+    local service=$1
+    if [[ -z "$service" ]]; then
+        return 1
+    fi
+    local status
+    local message
+    case "$OSTYPE" in
+    linux*)
+        if pidof systemd; then
+            {
+                systemctl start $service
+                status=$?
+                message="Starting $service"
+            } || {
+                status=$?
+                message="Failed to start $service"
+            }
+        else
+            {
+                service $service start
+                status=$?
+                message="Starting $service"
+            } || {
+                status=$?
+                message="Failed to start $service"
+            }
+        fi
+        ;;
+    darwin*)
+        {
+            brew services start $service
+            status=$?
+            message="Starting $service"
+        } || {
+            status=$?
+            message="Failed to start $service"
+        }
+        ;;
+    esac
+    if [[ $status -eq 0 ]]; then
+        _success "$message"
+    else
+        _error "$message"
+    fi
+    return $status
+}
+
+function _stopService() {
+    local service=$1
+    if [[ -z "$service" ]]; then
+        return 1
+    fi
+    local status
+    local message
+    case "$OSTYPE" in
+    linux*)
+        if pidof systemd; then
+            {
+                systemctl stop $service
+                status=$?
+                message="Stopping $service"
+            } || {
+                status=$?
+                message="Failed to stop $service"
+            }
+        else
+            {
+                service $service stop
+                status=$?
+                message="Stopping $service"
+            } || {
+                status=$?
+                message="Failed to stop $service"
+            }
+        fi
+        ;;
+    darwin*)
+        {
+            brew services stop $service
+            status=$?
+            message="Stopping $service"
+        } || {
+            status=$?
+            message="Failed to stop $service"
+        }
+        ;;
+    esac
+    if [[ $status -eq 0 ]]; then
+        _success "$message"
+    else
+        _error "$message"
+    fi
+    return $status
+}
+
+function _restartService() {
+    local service=$1
+    if [[ -z "$service" ]]; then
+        return 1
+    fi
+    local status
+    local message
+    case "$OSTYPE" in
+    linux*)
+        if pidof systemd; then
+            {
+                systemctl restart $service
+                status=$?
+                message="Restarting $service"
+            } || {
+                status=$?
+                message="Failed to restart $service"
+            }
+        else
+            {
+                service $service restart
+                status=$?
+                message="Restarting $service"
+            } || {
+                status=$?
+                message="Failed to restart $service"
+            }
+        fi
+        ;;
+    darwin*)
+        {
+            brew services restart $service
+            status=$?
+            message="Restarting $service"
+        } || {
+            status=$?
+            message="Failed to restart $service"
+        }
+        ;;
+    esac
+    if [[ $status -eq 0 ]]; then
+        _success "$message"
+    else
+        _error "$message"
+    fi
+    return $status
 }
 
 function _getPublicIP() {
@@ -199,6 +412,56 @@ function _validateDomain() {
     return 1
 }
 
+function _validateHostname() {
+    local hostname=$@
+    if [[ $hostname =~ ^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$ ]]; then
+        return 0
+    fi
+    return 1
+}
+
+function _compareVersion() {
+    local version1=$1
+    local version2=$2
+    if [[ -z "$version1" || -z "$version2" ]]; then
+        echo "You must specify two versions to compare"
+        return
+    fi
+    if [[ $version1 == $version2 ]]; then
+        return 'equal'
+    fi
+    local IFS=.
+    local i ver1=($version1) ver2=($version2)
+    # fill empty fields in ver1 with zeros
+    for ((i = ${#ver1[@]}; i < ${#ver2[@]}; i++)); do
+        ver1[i]=0
+    done
+    for ((i = 0; i < ${#ver1[@]}; i++)); do
+        if [[ -z ${ver2[i]} ]]; then
+            # fill empty fields in ver2 with zeros
+            ver2[i]=0
+        fi
+        if ((10#${ver1[i]} > 10#${ver2[i]})); then
+            return 'greater'
+        fi
+        if ((10#${ver1[i]} < 10#${ver2[i]})); then
+            return 'less'
+        fi
+    done
+    return 'unknown'
+}
+
+function _isInstalled() {
+    local package=$1
+    if [[ -z "$package" ]]; then
+        return 1
+    fi
+    if which $package >/dev/null; then
+        return 0
+    fi
+    return 1
+}
+
 function _printPoweredBy() {
     cat <<EOF
 
@@ -235,3 +498,15 @@ $_reset
 ################################################################
 EOF
 }
+
+# Parse helper arguments
+for arg in "$@"; do
+    case $arg in
+    NOTIFY_TO=*)
+        _SCRIPT_EMAIL_NOTIFIER="${arg#*=}"
+        _info "This script will send notifications to $_SCRIPT_EMAIL_NOTIFIER"
+        shift
+        ;;
+
+    esac
+done

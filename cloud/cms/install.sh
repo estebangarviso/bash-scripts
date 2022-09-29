@@ -238,7 +238,6 @@ function install() {
     # Create database
     local databaseName=$(echo ${DOMAIN} | cut -d. -f1)
     source "$(pwd)/cloud/mariadb/create-database.sh" -db="${databaseName}${CMS_DB_SUFFIX}" -r
-    _addMessage "<h3>Database</h3>" "success"
     _addMessage "Database: ${DB_NAME}" "success"
     _addMessage "User: ${DB_USER}" "success"
     _addMessage "Password: ${DB_PASS}" "success"
@@ -285,7 +284,6 @@ function createFTPUser() {
         FTP_USER_PWD=$(generatePassword)
         echo "$FTP_USER:$FTP_USER_PWD" | chpasswd
         _success "User $FTP_USER created!"
-        _addMessage "<h3>User</h3>" "success"
         _addMessage "User: $FTP_USER" "success"
         _addMessage "Password: $FTP_USER_PWD" "success"
         _addMessage "Home: /home/$FTP_USER" "success"
@@ -389,19 +387,27 @@ EOF
     local pm_max_children="$serverLimit"
     [grep -q "pm.max_children" "$phpFpmMpmFile"] && _sed "pm.max_children =.*" "pm.max_children = $pm_max_children" "$phpFpmMpmFile" || echo "pm.max_children = $pm_max_children" >>"$phpFpmMpmFile"
 
+    # Assign PHP-FPM variables to Nginx
+    NGINX_CLIENT_MAX_BODY_SIZE="${post_max_size}"
 }
 
 function configureMariaDB() {
     _header "Configuring MariaDB"
 
     local mysqlConfFile="$ETC_DIR/my.cnf"
-    test -f "$mysqlConfFile" || mysqlConfFile="$ETC_DIR/mysql/my.cnf"
-    test -f "$mysqlConfFile" || mysqlConfFile="/usr/etc/my.cnf"
-    test -f "$mysqlConfFile" || mysqlConfFile="$HOME/.my.cnf"
-    test -f "$mysqlConfFile" || {
-        _addMessage "Unable to find my.cnf. Check if MariaDB is installed and try again (if the problem persist, create a file manually in $ETC_DIR)." "error"
+    if [ ! -f "$mysqlConfFile" ]; then
+        mysqlConfFile="$ETC_DIR/mysql/my.cnf"
+    fi
+    if [ ! -f "$mysqlConfFile" ]; then
+        mysqlConfFile="/usr/etc/my.cnf"
+    fi
+    if [ ! -f "$mysqlConfFile" ]; then
+        mysqlConfFile="$HOME/.my.cnf"
+    fi
+    if [ ! -f "$mysqlConfFile" ]; then
+        _error "Unable to find my.cnf. Check if MariaDB is installed and try again (if the problem persist, create a file manually in $ETC_DIR)."
         return 1
-    }
+    fi
 
     # MariaDB configuration
     local query_cache_limit="128K"
@@ -438,39 +444,16 @@ function configureNginx() {
 }
 
 function startServices() {
-    case "$OSTYPE" in
-    linux*)
-        # start Nginx, PHP and MariaDB
-        pidof systemd && {
-            systemctl start nginx
-            systemctl start php$PHP_VERSION-fpm
-            systemctl start mariadb
-        } || {
-            service nginx start
-            service php$PHP_VERSION-fpm start
-            service mariadb start
-        }
-        ;;
-    darwin*)
-        # Check if brew is installed
-        if command -v brew &>/dev/null; then
-            brew services restart "php@$PHP_VERSION"
-            brew services restart nginx
-            brew services restart mariadb
-        else
-            echo "Brew is not installed"
-            _addMessage "Brew is not installed" "error"
-            return 1
-        fi
-
-        ;;
-    *)
-        echo "Unknown OS"
-        _addMessage "Unknown OS" "error"
-        return 1
-        ;;
-    esac
+    # First stop all services to avoid conflicts
+    _stopService nginx
+    _stopService php$PHP_VERSION-fpm
+    _stopService mariadb
+    # Start Nginx, PHP and MariaDB
+    _startService nginx
+    _startService php$PHP_VERSION-fpm
+    _startService mariadb
 }
+
 #
 # MAIN
 #
@@ -511,6 +494,7 @@ ADMIN_PASS="$(generatePassword)"
 
 NGINX_AVAILABLE_VHOSTS_DIR="${ETC_DIR}/nginx/sites-available"
 NGINX_ENABLED_VHOSTS_DIR="${ETC_DIR}/nginx/sites-enabled"
+NGINX_CLIENT_MAX_BODY_SIZE="22M"
 
 DB_NAME=
 DB_USER=
@@ -525,26 +509,19 @@ function main() {
     [[ $# -lt 1 ]] && _usage
     # Process arguments
     processArgs "$@"
-
     # (L)
     # Update VM
     update
-
     # # Create User
     # createFTPUser
-
     # Install
     install
-
     # Configure Nginx (E)
     configureNginx
-
     # Configure MariaDB (M)
     configureMariaDB
-
     # Configure PHP (P)
     configurePhp
-
     # Start services
     startServices
 }

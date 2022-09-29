@@ -1,4 +1,8 @@
 #!/bin/bash
+source '$(pwd)/core/lib.sh'
+
+# Check Sanity
+_checkSanity
 
 # Creates a configuration script to run once final servers are up.
 PROCESS_SIZE_APACHE_MB=3
@@ -9,13 +13,13 @@ MEMORY_KB=$(grep MemTotal /proc/meminfo | awk '"'"'{print $2}'"'"')
 MEMORY_MB=$(($MEMORY_KB / 1024))
 MEMORY_AVAILABLE_MB=$(($MEMORY_KB / 1178))
 NUM_CORES=$(nproc --all)
-echo "Memory: $MEMORY_MB MB"
-echo "Memory Available: $MEMORY_AVAILABLE_MB MB"
-echo "Num Cores $NUM_CORES"
+_info "Memory: $MEMORY_MB MB"
+_info "Memory Available: $MEMORY_AVAILABLE_MB MB"
+_info "Num Cores $NUM_CORES"
 
-#Now do some calculations
+# Now do some calculations
 SERVER_LIMIT=$(($MEMORY_AVAILABLE_MB / $PROCESS_SIZE_APACHE_MB))
-echo "HTTP MPM Server Limit: $SERVER_LIMIT"
+_info "HTTP MPM Server Limit: $SERVER_LIMIT"
 
 #Convert Apache from mpm-prefork to mpm-worker
 #Set params
@@ -61,8 +65,8 @@ NUM_START_SERVERS=$(($NUM_CORES * 4))
 NUM_MIN_SPARE_SERVERS=$(($NUM_CORES * 2))
 NUM_MAX_SPARE_SERVERS=$(($NUM_CORES * 4))
 
-sed -c -i "s/^;*pm.max_children.*/pm.max_children = $MAX_CHILDREN/" /etc/php-fpm.d/www.conf
-sed -c -i "s/^;*pm.start_servers.*/pm.start_servers = $NUM_START_SERVERS/" /etc/php-fpm.d/www.conf
-sed -c -i "s/^;*pm.min_spare_servers.*/pm.min_spare_servers =  $NUM_MIN_SPARE_SERVERS/" /etc/php-fpm.d/www.conf
-sed -c -i "s/^;*pm.max_spare_servers.*/pm.max_spare_servers =  $NUM_MAX_SPARE_SERVERS/" /etc/php-fpm.d/www.conf
-sed -c -i "s/^;*pm.max_requests = 500.*/pm.max_requests = 1000/" /etc/php-fpm.d/www.conf
+_sed "^;*pm.max_children.*" "pm.max_children = $MAX_CHILDREN" /etc/php-fpm.d/www.conf
+_sed "^;*pm.start_servers.*" "pm.start_servers = $NUM_START_SERVERS" /etc/php-fpm.d/www.conf
+_sed "^;*pm.min_spare_servers.*" "pm.min_spare_servers = $NUM_MIN_SPARE_SERVERS" /etc/php-fpm.d/www.conf
+_sed "^;*pm.max_spare_servers.*" "pm.max_spare_servers = $NUM_MAX_SPARE_SERVERS" /etc/php-fpm.d/www.conf
+_sed "^;*pm.max_requests = 500.*" "pm.max_requests = 1000" /etc/php-fpm.d/www.conf

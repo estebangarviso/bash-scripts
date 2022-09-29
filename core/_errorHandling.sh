@@ -1,9 +1,12 @@
-# Credits: Luca Borrione
+# Contribution: Luca Borrione
 # Reference: https://stackoverflow.com/questions/64786/error-handling-in-bash#answer-13099228
 lib_name_trap='trap'
 lib_version_trap=20121026
 
-stderr_log="/dev/stderr"
+stderr_log="$(pwd)/tmp/stderr"
+if [ ! -f "$stderr_log" ]; then
+    touch "$stderr_log"
+fi
 
 #
 # TO BE SOURCED ONLY ONCE:
@@ -14,6 +17,21 @@ if [[ " ${g_libs[*]} " =~ " ${lib_name_trap}@${lib_version_trap} " ]]; then
     return 0
 else
     g_libs+=("$lib_name_trap@$lib_version_trap")
+fi
+
+# check if _variables.sh and _helpers.sh are already in the array g_libs if not show error and exit
+if [[ " ${g_libs[*]} " =~ " ${lib_name_variables}@${lib_version_variables} " ]]; then
+    :
+else
+    echo "ERROR: ${lib_name_variables} is not loaded"
+    exit 1
+fi
+
+if [[ " ${g_libs[*]} " =~ " ${lib_name_helpers}@${lib_version_helpers} " ]]; then
+    :
+else
+    echo "ERROR: ${lib_name_helpers} is not loaded"
+    exit 1
 fi
 
 #
@@ -30,15 +48,27 @@ exec 2>"$stderr_log"
 
 ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 #
-# FUNCTION: EXIT_HANDLER
+# FUNCTION: EXCEPTION_HANDLER
 #
 ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 
-function exit_handler() {
-    local error_code="$?"
+function sendReport() {
+    # Copy _email.template.html to email.html
+    local email_subject="Script $0 execution report from $(hostname)"
+    if [[ ! -z $_SCRIPT_EMAIL_NOTIFIER ]]; then
+        _sendEmail --subject="${email_subject}" --to="$_SCRIPT_EMAIL_NOTIFIER" --body="$(cat "$_log_file")"
+    fi
+}
 
-    test $error_code == 0 && return
-
+function exception_handler() {
+    _SCRIPT_EMAIL_NOTIFIER=${_SCRIPT_EMAIL_NOTIFIER:-}
+    set -u # unset variables are errors
+    local exit_code=$1
+    # Check if exit code and stderr_log is empty
+    if [[ -z $exit_code ]] || ([[ ! -s $stderr_log ]] && [[ $exit_code -eq 0 ]]); then
+        sendReport
+        return 0
+    fi
     #
     # LOCAL VARIABLES:
     # ------------------------------------------------------------------
@@ -49,7 +79,7 @@ function exit_handler() {
 
     local error_file=''
     local error_lineno=''
-    local error_message='unknown'
+    local error_message=''
 
     local lineno=''
 
@@ -58,9 +88,11 @@ function exit_handler() {
     # ------------------------------------------------------------------
     #
     # Color the output if it's an interactive terminal
-    test -t 1 && tput bold
-    tput setf 4 ## red bold
-    echo -e "\n(!) EXIT HANDLER:\n"
+    # _error "ERROR: An error was encountered with the script."
+
+    if [ -t 1 ]; then
+        printf "${_red}${_bold}"
+    fi
 
     #
     # GETTING LAST ERROR OCCURRED:
@@ -70,9 +102,10 @@ function exit_handler() {
     # Read last file from the error log
     # ------------------------------------------------------------------
     #
+    local stderr=
     if test -f "$stderr_log"; then
         stderr=$(tail -n 1 "$stderr_log")
-        rm "$stderr_log"
+        # rm -f "$stderr_log"
     fi
 
     #
@@ -81,9 +114,9 @@ function exit_handler() {
     #
 
     if test -n "$stderr"; then
-        # Exploding stderr on :
+        # Split stderr on ": "
         mem="$IFS"
-        local shrunk_stderr=$(echo "$stderr" | sed 's/\: /\:/g')
+        local shrunk_stderr=$(echo "$stderr" | sed -e 's/: /:/g')
         IFS=':'
         local stderr_parts=($shrunk_stderr)
         IFS="$mem"
@@ -104,6 +137,10 @@ function exit_handler() {
         error_message="$(echo "$error_message" | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//')"
     fi
 
+    if [ -z "$error_file" ]; then
+        error_file=$(basename "$0")
+    fi
+
     #
     # GETTING BACKTRACE:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -114,6 +151,7 @@ function exit_handler() {
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     local lineno=""
+    # Regex to match the line number. e.g. "line 123"
     regex='^([a-z]{1,}) ([0-9]{1,})$'
 
     if [[ $error_lineno =~ $regex ]]; then # The error line was found on the log
@@ -122,25 +160,23 @@ function exit_handler() {
         local row="${BASH_REMATCH[1]}"
         lineno="${BASH_REMATCH[2]}"
 
-        echo -e "FILE:\t\t${error_file}"
-        echo -e "${row^^}:\t\t${lineno}\n"
-
-        echo -e "ERROR CODE:\t${error_code}"
-        test -t 1 && tput setf 6 ## white yellow
-        echo -e "ERROR MESSAGE:\n$error_message"
-
+        if [ -t 1 ]; then
+            printf "${_light_yellow}"
+        fi
+        printf "${error_message} in ${error_file} line ${lineno}\n"
+        _addMessage "${error_message} in ${error_file} line ${lineno}" "error"
     else
-
         regex="^${error_file}\$|^${error_file}\s+|\s+${error_file}\s+|\s+${error_file}\$"
-        if [[ "$_backtrace" =~ $regex ]]; then # The file was found on the log but not the error line
+        if [[ $_backtrace =~ $regex ]]; then
+
             # (could not reproduce this case so far)
             # ------------------------------------------------------
-            echo -e "FILE:\t\t$error_file"
-            echo -e "ROW:\t\tunknown\n"
 
-            echo -e "ERROR CODE:\t${error_code}"
-            test -t 1 && tput setf 6 ## white yellow
-            echo -e "ERROR MESSAGE:\n${stderr}"
+            if [ -t 1 ]; then
+                printf "${_light_yellow}"
+            fi
+            printf "${stderr} in $error_file line unknown\n"
+            _addMessage "${error_message} in ${error_file} line unknown" "error"
 
         # Neither the error line nor the error file was found on the log
         # (e.g. type 'cp ffd fdf' without quotes wherever)
@@ -149,10 +185,10 @@ function exit_handler() {
             #
             # The error file is the first on backtrace list:
 
-            # Exploding backtrace on newlines
+            # Split backtrace on newlines
             mem=$IFS
             IFS='
-                    '
+            '
             #
             # Substring: I keep only the carriage return
             # (others needed only for tabbing purpose)
@@ -162,7 +198,6 @@ function exit_handler() {
             IFS=$mem
 
             error_file=""
-
             if test -n "${lines[1]}"; then
                 array=(${lines[1]})
 
@@ -174,16 +209,19 @@ function exit_handler() {
                 error_file="$(echo "$error_file" | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//')"
             fi
 
-            echo -e "FILE:\t\t$error_file"
-            echo -e "ROW:\t\tunknown\n"
-
-            echo -e "ERROR CODE:\t${error_code}"
-            test -t 1 && tput setf 6 ## white yellow
-            if test -n "${stderr}"; then
-                echo -e "ERROR MESSAGE:\n${stderr}"
-            else
-                echo -e "ERROR MESSAGE:\n${error_message}"
+            if [ -t 1 ]; then
+                printf "${_light_yellow}"
             fi
+            local blockErrorMessage=
+            if test -n "${stderr}"; then
+                printf "${stderr}"
+                blockErrorMessage="${stderr}"
+            else
+                printf "${error_message}"
+                blockErrorMessage="${error_message}"
+            fi
+            printf " in $error_file line unknown\n"
+            _addMessage "${blockErrorMessage} in ${error_file} line ${lineno}" "error"
         fi
     fi
 
@@ -191,22 +229,31 @@ function exit_handler() {
     # PRINTING THE BACKTRACE:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-    test -t 1 && tput setf 7 ## white bold
-    echo -e "\n$_backtrace\n"
+    if [ -t 1 ]; then
+        printf "${_white}${_bold}"
+    fi
+    printf "\n$_backtrace\n"
+    _addMessage "$_backtrace" "error"
 
     #
     # EXITING:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-    test -t 1 && tput setf 4 ## red bold
-    echo "Exiting!"
+    if [ -t 1 ]; then
+        printf "${_red}${_bold}"
+    fi
 
-    test -t 1 && tput sgr0 # Reset terminal
+    if [ -t 1 ]; then
+        printf "${_reset}"
+    fi
 
-    exit "$error_code"
+    if [[ ! -z $_SCRIPT_EMAIL_NOTIFIER ]]; then
+        # Send email
+        sendReport
+    fi
+    exit "$exit_code"
 }
-trap exit_handler EXIT # ! ! ! TRAP EXIT ! ! !
-trap exit ERR          # ! ! ! TRAP ERR ! ! !
+trap 'rc=$?; exception_handler $rc; exit $rc' ERR EXIT
 
 ###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~##
 #
@@ -227,7 +274,7 @@ function backtrace {
     while caller $i >/dev/null; do
         if test -n "$_start_from_" && (("$i" + 1 >= "$_start_from_")); then
             if test "$first" == false; then
-                echo "BACKTRACE IS:"
+                printf "\nBacktrace:\n"
                 first=true
             fi
             caller $i

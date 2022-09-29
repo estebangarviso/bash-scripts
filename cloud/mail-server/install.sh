@@ -11,12 +11,11 @@ _checkSanity
 function _usage() {
     echo -n "$(basename $0) [OPTION]...
 
-Script to install a mail server with mailu in a VM instance on Oracle Cloud Infrastructure
+Script to install a mail server with docker-mailserver.
 Version $VERSION
 
     Options:
-        -ht, --host                 Host name
-        -a, --admin                 Admin email address
+        -ht, --host                 Host name (eg. mail.example.com)
 
         -h, --help                  Display this help and exit
         -v, --version               Output version information and exit
@@ -35,6 +34,11 @@ function processArgs() {
         case $arg in
         -ht=* | --ht=*)
             HOSTNAME="${arg#*=}"
+            if ! _validateHostname "$HOSTNAME"; then
+                _die "Invalid hostname: $HOSTNAME"
+            fi
+            # Set hostname
+            setHostname
             ;;
         --debug)
             DEBUG=1
@@ -50,9 +54,8 @@ function processArgs() {
     if [ -z "$HOSTNAME" ]; then
         _die "Host name cannot be empty."
     fi
-    if [ -z "$ADMIN_EMAIL" ]; then
-        ADMIN_EMAIL="admin@$DOMAIN"
-    fi
+    DOMAIN="$(echo "$HOSTNAME" | cut -d. -f2-)"
+    ADMIN_EMAIL="no-reply@$DOMAIN"
 }
 
 function generatePassword() {
@@ -71,7 +74,7 @@ function generateRandomString() {
 function exposePorts() {
     # Open ports for mail server
     _header "Opening ports"
-    local ports=("25" "465" "587" "110" "143" "993" "995")
+    local ports=("25" "465" "587")
     for port in "${ports[@]}"; do
         if [[ -z $(netstat -tulpn | grep -w "$port") ]]; then
             # Port closed
@@ -80,32 +83,97 @@ function exposePorts() {
                 ufw allow $port
                 _success "Port $port opened"
             } || {
-                local error_msg="Error opening port $port"
-                _error "$error_msg"
-                _addMessage "$error_msg" "error"
+                _error "Error opening port $port"
             }
         # else
         #     # Port open
         fi
     done
     _success "Ports opened"
+}
 
+function setHostname() {
     # Set hostname for mail server
-    hostnamectl set-hostname $HOSTNAME
+    _header "Setting hostname"
+    {
+        _info "Setting hostname to $HOSTNAME"
+        hostnamectl set-hostname $HOSTNAME
+        _success "Hostname set to $HOSTNAME"
+    } || {
+        _error "Error setting hostname to $HOSTNAME"
+    }
+    # Verify hostname
+    if [ "$(hostname)" != "$HOSTNAME" ]; then
+        _die "Hostname not set correctly. Expected: $HOSTNAME, Actual: $(hostname)"
+    fi
 }
 
 function update() {
     _header "Updating system"
-    apt update -y && apt upgrade -y
-    _success "System updated!"
+    {
+        apt-get update
+        apt-get upgrade -y
+        _success "System updated"
+    } || {
+        _error "Error updating system"
+    }
+}
+
+function dockerInstall() {
+    # Uninstall the tech preview or beta version of Docker Desktop
+    if [[ -n $(which docker) ]]; then
+        _info "Docker is already installed"
+    else
+        _header "Installing Docker"
+        {
+            apt remove docker-desktop
+            rm -r $HOME/.docker/desktop
+            rm /usr/local/bin/com.docker.cli
+            apt purge docker-desktop
+            # Install Docker Engine
+            cd /tmp
+            curl -fsSL https://get.docker.com -o get-docker.sh
+            sh get-docker.sh
+            # Install Docker Compose
+            apt install docker-compose
+            _success "Docker installed"
+        } || {
+            _error "Error installing Docker"
+        }
+    fi
 }
 
 function install() {
-    _header "Installing"
-    # Install Mailu
-
-    # Answer questions
-
+    _header "Installing Docker Mailserver"
+    # Check if Docker is installed
+    dockerInstall
+    # Pull docker-mailserver image
+    {
+        _info "Pulling docker-mailserver image"
+        docker pull mailserver/docker-mailserver || {
+            _info "Pulling docker-mailserver image failed. Trying to pull from GitHub"
+            docker pull ghcr.io/docker-mailserver/docker-mailserver:edge || {
+                _die "Error pulling docker-mailserver image"
+            }
+        }
+        _success "docker-mailserver image pulled"
+    } || {
+        _die "Error pulling docker-mailserver image"
+    }
+    # Expose ports
+    exposePorts
+    # Configure docker-compose.yml
+    {
+        _info "Configuring docker-compose.yml"
+        local dockerComposeFile="$(pwd)/cloud/mail-server/docker-compose.yml"
+        local dockerComposeFileBackup="$(pwd)/cloud/mail-server/docker-compose.yml.bak"
+        cp $dockerComposeFile $dockerComposeFileBackup
+        _sed "hostname: .*" "hostname: $HOSTNAME" $dockerComposeFile
+        _sed "domainname: .*" "domainname: $DOMAIN" $dockerComposeFile
+        _success "docker-compose.yml configured"
+    } || {
+        _die "Error configuring docker-compose.yml"
+    }
 }
 
 #
@@ -119,6 +187,7 @@ _debug set -x
 VERSION="0.1.0"
 
 HOSTNAME=
+DOMAIN=$(hostname -d)
 IP_ADDRESS=$(_getPublicIP)
 ADMIN_EMAIL=
 
@@ -126,18 +195,10 @@ function main() {
     [[ $# -lt 1 ]] && _usage
     # Process arguments
     processArgs "$@"
-
     # Update
     update
-
     # Install dependencies
     install
-
-    # Send email with error messages to EMAIL
-    if [[ ! -z $_errorMsgs ]]; then
-        echo "There were errors during the execution of the script. Sending email to $EMAIL"
-        source "$(pwd)/cloud/mail-server/send.sh" --to="$EMAIL" --subject="Error executing $(basename $0)" --body="$_errorMsgs"
-    fi
 }
 
 main "$@"

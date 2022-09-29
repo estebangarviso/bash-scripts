@@ -34,42 +34,54 @@ expect eof
 ")
 }
 
-function installLinux() {
+function _isSecureMariaDB() {
+    local result=$(mysql -u root -p${MYSQL_ROOT_PASSWORD} -e "SELECT 1" 2>&1)
+    if [[ "$result" == *"ERROR"* ]]; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+function installOnLinux() {
     # Install expect
     apt install -qq expect -y
     # Install MariaDB
-    apt-get install -qq mariadb-server mariadb-client -y
+    if ! _isInstalled "mariadb-server"; then
+        _info "Installing MariaDB Server"
+        apt install -qq mariadb-server -y
+    else
+        _info "MariaDB Server is already installed"
+    fi
+    if ! _isInstalled "mariadb-client"; then
+        _info "Installing MariaDB Client"
+        apt install -qq mariadb-client -y
+    else
+        _info "MariaDB Client is already installed"
+    fi
     # Start MariaDB (it is required to secure it)
-    pidof systemd && {
-        systemctl start mariadb
-    } || {
-        service mariadb start
-    }
+    _startService mariadb
     # Secure MariaDB
     _secureMariaDB
     # Restart MariaDB
-    pidof systemd && {
-        systemctl restart mariadb
-    } || {
-        service mariadb restart
-    }
+    _restartService mariadb
     # Purge expect
     apt-get purge -qq expect -y
 }
 
-function installMac() {
+function installOnMac() {
     # Install expect
     brew install expect
     # Install MariaDB
-    if ! brew ls --versions mariadb >/dev/null; then
+    if _isInstalled "mariadb"; then
         brew install mariadb
     fi
     # Start MariaDB (it is required to secure it)
-    brew services start mariadb
-    # Restart MariaDB
-    brew services restart mariadb
+    _startService mariadb
     # Secure MariaDB
     _secureMariaDB
+    # Restart MariaDB
+    _restartService mariadb
     # Purge expect
     brew uninstall expect
 }
@@ -79,11 +91,18 @@ export MYSQL_ROOT_PASSWORD=$(openssl rand -base64 16)
 function main() {
     _header "Installing MariaDB"
     if [[ "$OSTYPE" == "linux"* ]]; then
-        installLinux
+        installOnLinux
     elif [[ "$OSTYPE" == "darwin"* ]]; then
-        installMac
+        installOnMac
     else
         _warning "OS not supported"
+    fi
+    if _isSecureMariaDB; then
+        _success "MariaDB is secure"
+    else
+        _error "MariaDB is not secure, please try to secure it manually and start the service"
+        # Stop MariaDB
+        _stopService mariadb
     fi
     _success "MariaDB installed"
 }

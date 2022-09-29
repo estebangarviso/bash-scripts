@@ -1,12 +1,13 @@
 #!/bin/bash
-cat <<EOF >$NGINX_AVAILABLE_VHOSTS_DIR/$DOMAIN.conf
+cat <<EOF >${NGINX_AVAILABLE_VHOSTS_DIR}/${DOMAIN}.conf
 server {
 
     # Ipv4
     listen 80;
+    listen 443 ssl http2;
  
     # IPv6
-    listen [::]:80;
+    # listen [::]:80;
 
     # SSL Ipv4 & v6
     # listen 443 ssl;
@@ -17,23 +18,23 @@ server {
     # ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
     # ssl_ciphers ECDH+AESGCM:ECDH+AES256:ECDH+AES128:DH+3DES:RSA+3DES:AES128-SHA:!ADH:!AECDH:!MD5;
     # ssl_prefer_server_ciphers on;
-    # Do not forget to create this file before with OpenSSL : "openssl dhparam -out $ETC_DIR/nginx/ssl/dhparam.pem 2048"
-    # ssl_dhparam $ETC_DIR/nginx/ssl/dhparam.pem;
+    # Do not forget to create this file before with OpenSSL : "openssl dhparam -out ${ETC_DIR}/nginx/ssl/dhparam.pem 2048"
+    # ssl_dhparam ${ETC_DIR}/nginx/ssl/dhparam.pem;
 
     # Your domain names here
-    server_name $DOMAIN www.$DOMAIN;
+    server_name ${DOMAIN} www.${DOMAIN};
 
     # Your website root location
-    root $WEB_DIR/$DOMAIN/;
+    root ${WEB_DIR}/${DOMAIN}/;
 
     index index.php;
 
     #Log
-    access_log $LOGS_DIR/nginx/$DOMAIN/access.log;
-    error_log $LOGS_DIR/nginx/$DOMAIN/error.log;
+    access_log ${LOGS_DIR}/nginx/${DOMAIN}/access.log;
+    error_log ${LOGS_DIR}/nginx/${DOMAIN}/error.log;
 
     # Your admin folder
-    set \$admin_dir /$CMS_ADMIN_DIRNAME;
+    set \$admin_dir /${CMS_ADMIN_DIRNAME};
 
     # Gzip Settings, convert all types.
     gzip on;
@@ -128,12 +129,12 @@ server {
         fastcgi_index index.php;
 
         # Switch if needed
-        include $ETC_DIR/nginx/fastcgi_params;
+        include ${ETC_DIR}/nginx/fastcgi_params;
         # include fcgi.conf;
 
         # Do not forget to update this part if needed
         # fastcgi_pass 127.0.0.1:9000;  
-        fastcgi_pass unix:/run/php/php$PHP_VERSION-fpm.sock;
+        fastcgi_pass unix:/run/php/php${PHP_VERSION}-fpm.sock;
         
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
         fastcgi_keep_conn on;
@@ -144,7 +145,7 @@ server {
         # fastcgi_buffer_size 256k;
         # fastcgi_buffers 256 16k;
         # fastcgi_busy_buffers_size 256k;
-        client_max_body_size 10M;
+        client_max_body_size ${NGINX_CLIENT_MAX_BODY_SIZE};
 
         # Temp file tweak
         fastcgi_max_temp_file_size 0;
