@@ -129,6 +129,14 @@ function installPortainer() {
     } || {
         _die "Failed to modify docker-compose.yml."
     }
+    # Verify docker-compose.yml VIRTUAL_HOST value
+    _info "Verifying docker-compose.yml VIRTUAL_HOST value..."
+    local line=$(sed -n "/- VIRTUAL_HOST=.*/p" "$COMPOSE_FILE" | sed -e 's/- VIRTUAL_HOST=//' | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//')
+    if [[ $line == "$VIRTUAL_HOST" ]]; then
+        _success "Access Portainer at: http://$VIRTUAL_HOST"
+    else
+        _die "docker-compose.yml VIRTUAL_HOST value verification failed, expected: $VIRTUAL_HOST but got: $line"
+    fi
 }
 
 function deploy() {
