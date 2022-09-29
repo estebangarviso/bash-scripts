@@ -19,7 +19,7 @@ cd bash-scripts
 or
 
 ```bash
-cd ~/ && sh <(curl https://github.com/estebangarviso/bash-scripts/archive/main.zip || wget https://github.com/estebangarviso/bash-scripts/archive/main.zip) && apt -qq -y install unzip && unzip main.zip && rm main.zip && cd bash-scripts-main
+cd ~/ && sh <(curl https://github.com/estebangarviso/bash-scripts/archive/main.zip || wget https://github.com/estebangarviso/bash-scripts/archive/main.zip) && apt -qq -y install unzip && unzip main.zip && rm main.zip && mv bash-scripts-main bash-scripts && cd bash-scripts
 ```
 
 ### MariaDB
@@ -48,6 +48,12 @@ cloud/cms/install.sh
 
 ```bash
 bash ./cloud/php-fpm/install.sh
+```
+
+### Portainer
+
+```bash
+bash ./cloud/portainer/install.sh -d=domain.com
 ```
 
 ### Rclone (Coming soon)
