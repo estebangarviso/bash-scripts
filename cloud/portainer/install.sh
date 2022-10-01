@@ -13,6 +13,23 @@ _checkSanity
 #
 
 function _usage() {
+    echo -n "$(basename $0) [OPTION]...
+
+Script to install and deploy portainer in a docker swarm scenario.
+Version $VERSION
+
+    Options:
+        -n, --name                  Portainer name (default: portainer)
+        -p, --port                  Portainer port (default: 9000)
+        -u, --user                  Portainer user (generated if not provided)
+        -pw, --password             Portainer password (generated if not provided)
+        -h, --help                  Display this help and exit
+        -v, --version               Output version information and exit
+
+    Examples:
+        $(basename $0) --help
+
+"
 
 }
 
@@ -24,6 +41,18 @@ function processArgs() {
             if ! _validateDomain "$DOMAIN"; then
                 _die "Invalid domain: $DOMAIN"
             fi
+            ;;
+        -n=* | --name=*)
+            PORTAINER_NAME="${arg#*=}"
+            ;;
+        -p=* | --port=*)
+            PORTAINER_PORT="${arg#*=}"
+            ;;
+        -u=* | --user=*)
+            PORTAINER_USER="${arg#*=}"
+            ;;
+        -pw=* | --password=*)
+            PORTAINER_PASSWORD="${arg#*=}"
             ;;
         --debug)
             DEBUG=1
@@ -39,8 +68,8 @@ function processArgs() {
     if [ -z "$DOMAIN" ]; then
         _die "Domain cannot be empty."
     fi
-    VIRTUAL_HOST="portainer$(generateRandomString 16).$DOMAIN"
-    _success "Subdomain: $VIRTUAL_HOST"
+    PORTAINER_VIRTUAL_HOST="portainer$(generateRandomString 16).$DOMAIN"
+    _success "Subdomain: $PORTAINER_VIRTUAL_HOST"
 }
 
 function update() {
@@ -124,7 +153,7 @@ function installPortainer() {
     }
     # Modify docker-compose.yml
     _info "Modifying docker-compose.yml..."
-    _sed "VIRTUAL_HOST=.*" "VIRTUAL_HOST=$VIRTUAL_HOST" "$COMPOSE_FILE" && {
+    _sed "VIRTUAL_HOST=.*" "VIRTUAL_HOST=$PORTAINER_VIRTUAL_HOST" "$COMPOSE_FILE" && {
         _info "docker-compose.yml modified."
     } || {
         _die "Failed to modify docker-compose.yml."
@@ -132,10 +161,10 @@ function installPortainer() {
     # Verify docker-compose.yml VIRTUAL_HOST value
     _info "Verifying docker-compose.yml VIRTUAL_HOST value..."
     local line=$(sed -n "/- VIRTUAL_HOST=.*/p" "$COMPOSE_FILE" | sed -e 's/- VIRTUAL_HOST=//' | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//')
-    if [[ $line == "$VIRTUAL_HOST" ]]; then
-        _success "Access Portainer at: http://$VIRTUAL_HOST"
+    if [[ $line == "$PORTAINER_VIRTUAL_HOST" ]]; then
+        _success "Access Portainer at: http://$PORTAINER_VIRTUAL_HOST"
     else
-        _die "docker-compose.yml VIRTUAL_HOST value verification failed, expected: $VIRTUAL_HOST but got: $line"
+        _die "docker-compose.yml VIRTUAL_HOST value verification failed, expected: $PORTAINER_VIRTUAL_HOST but got: $line"
     fi
 }
 
@@ -188,7 +217,8 @@ DEBUG=0 # 1|0
 _debug set -x
 VERSION="0.1.0"
 DOMAIN=
-VIRTUAL_HOST=
+PORTAINER_VIRTUAL_HOST=
+PORTAINER_PORT="9000"
 COMPOSE_FILE="$(pwd)/cloud/portainer/docker-compose.yml"
 
 function main() {
