@@ -253,12 +253,18 @@ function main() {
     # NFS Mount
     apt-get install -y nfs-common
     mkdir -p "${NFS_LOCAL_PATH}"
-    _info "Mounting NFS share $NFS_REMOTE_PATH from $NFS_MOUNT_IP to $NFS_LOCAL_PATH"
-    mount "${NFS_MOUNT_IP}:${NFS_REMOTE_PATH}" "${NFS_LOCAL_PATH}" && {
-        _success "NFS share mounted. Command \"mount ${NFS_MOUNT_IP}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}\" was successful."
-    } || {
-        _die "Failed to mount NFS share. Command \"mount ${NFS_MOUNT_IP}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}\" failed."
-    }
+    # Check if NFS mount is already mounted
+    if [[ -n $(mount | grep "$NFS_LOCAL_PATH") ]]; then
+        _info "NFS mount already mounted."
+    else
+        # Mount NFS
+        _info "Mounting NFS share $NFS_REMOTE_PATH from $NFS_MOUNT_IP to $NFS_LOCAL_PATH"
+        mount "${NFS_MOUNT_IP}:${NFS_REMOTE_PATH}" "${NFS_LOCAL_PATH}" && {
+            _success "NFS share mounted. Command \"mount ${NFS_MOUNT_IP}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}\" was successful."
+        } || {
+            _die "Failed to mount NFS share. Command \"mount ${NFS_MOUNT_IP}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}\" failed."
+        }
+    fi
 
     # Install Docker
     installDocker
