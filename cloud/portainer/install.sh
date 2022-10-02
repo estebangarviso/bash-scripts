@@ -1,9 +1,9 @@
 #!/bin/bash
 #
-# Script to install and deploy portainer in a docker swarm scenario
+# Script to install and deploy portainer behind nginx reverse proxy in a docker standalone scenario.
 # Only works in Linux
 #
-source "../../core/lib.sh"
+source "$(pwd)/core/lib.sh"
 
 # Sanity check
 _checkSanity
@@ -15,14 +15,14 @@ _checkSanity
 function _usage() {
     echo -n "$(basename $0) [OPTION]...
 
-Script to install and deploy portainer in a docker swarm scenario.
+Script to install and deploy portainer behind nginx reverse proxy in a docker standalone scenario.
 Version $VERSION
 
     Options:
-        -n, --name                  Portainer name (default: portainer)
+        -n, --name                  Portainer name (default is portainer appended with a random string)
+        -nrp, --nfs-remote-path     NFS mount point (default: /nfs)
+        -nlp, --nfs-local-path      NFS mount point (default: /mnt/<nfs-remote-path>)
         -p, --port                  Portainer port (default: 9000)
-        -u, --user                  Portainer user (generated if not provided)
-        -pw, --password             Portainer password (generated if not provided)
         -h, --help                  Display this help and exit
         -v, --version               Output version information and exit
 
@@ -34,6 +34,7 @@ Version $VERSION
 }
 
 function processArgs() {
+    local defaultNfslocalpath="$NFS_LOCAL_PATH"
     for arg in "$@"; do
         case $arg in
         -d=* | --domain=*)
@@ -45,14 +46,20 @@ function processArgs() {
         -n=* | --name=*)
             PORTAINER_NAME="${arg#*=}"
             ;;
+        -nrp=* | --nfs-remote-path=*)
+            NFS_REMOTE_PATH="${arg#*=}"
+            if [[ "$NFS_LOCAL_PATH" == "$defaultNfslocalpath" ]]; then
+                NFS_LOCAL_PATH="/mnt/$NFS_REMOTE_PATH"
+            fi
+            ;;
+        -nlp=* | --nfs-local-path=*)
+            NFS_LOCAL_PATH="${arg#*=}"
+            ;;
+        -ni=* | --nfs-ip=*)
+            NFS_MOUNT_IP="${arg#*=}"
+            ;;
         -p=* | --port=*)
             PORTAINER_PORT="${arg#*=}"
-            ;;
-        -u=* | --user=*)
-            PORTAINER_USER="${arg#*=}"
-            ;;
-        -pw=* | --password=*)
-            PORTAINER_PASSWORD="${arg#*=}"
             ;;
         --debug)
             DEBUG=1
@@ -67,6 +74,9 @@ function processArgs() {
     done
     if [ -z "$DOMAIN" ]; then
         _die "Domain cannot be empty."
+    fi
+    if [ -z "$NFS_MOUNT_IP" ]; then
+        _die "NFS mount IP cannot be empty."
     fi
     PORTAINER_VIRTUAL_HOST="portainer$(generateRandomString 16).$DOMAIN"
     _success "Subdomain: $PORTAINER_VIRTUAL_HOST"
@@ -132,18 +142,6 @@ function installDocker() {
 function installPortainer() {
     # Install Portainer with Docker Compose
     _header "Installing Portainer with Docker Compose..."
-    # Create networks
-    _info "Creating networks..."
-    docker network create -d overlay proxy && {
-        _info "Network proxy created."
-    } || {
-        _die "Failed to create network proxy."
-    }
-    docker network create -d agent_network && {
-        _info "Network agent_network created."
-    } || {
-        _die "Failed to create network agent_network."
-    }
     # Create Portainer Volume
     _info "Creating Portainer volume..."
     docker volume create portainer_data && {
@@ -151,6 +149,7 @@ function installPortainer() {
     } || {
         _die "Failed to create Portainer volume."
     }
+    # Mount Portainer Volume
     # Modify docker-compose.yml
     _info "Modifying docker-compose.yml..."
     _sed "VIRTUAL_HOST=.*" "VIRTUAL_HOST=$PORTAINER_VIRTUAL_HOST" "$COMPOSE_FILE" && {
@@ -178,17 +177,12 @@ function deploy() {
     }
     # Check if Portainer is deployed
     _info "Checking if Portainer is deployed..."
-    if [[ -n $(docker service ls | grep portainer_portainer) ]]; then
+    if [[ -n $(docker service ls | grep portainer_portainer_1) ]]; then
         _success "Portainer is deployed."
     else
         _die "Portainer is not deployed."
     fi
-    if [[ -n $(docker service ls | grep portainer_agent) ]]; then
-        _success "Portainer agent is deployed."
-    else
-        _die "Portainer agent is not deployed."
-    fi
-    if [[ -n $(docker service ls | grep portainer_reverse-proxy) ]]; then
+    if [[ -n $(docker service ls | grep portainer_nginx-proxy_1) ]]; then
         _success "Portainer reverse-proxy is deployed."
     else
         _die "Portainer reverse-proxy is not deployed."
@@ -220,6 +214,9 @@ DOMAIN=
 PORTAINER_VIRTUAL_HOST=
 PORTAINER_PORT="9000"
 COMPOSE_FILE="$(pwd)/cloud/portainer/docker-compose.yml"
+NFS_REMOTE_PATH="/nfs"
+NFS_LOCAL_PATH="/mnt/${NFS_REMOTE_PATH}"
+NFS_MOUNT_IP=
 
 function main() {
     [[ $# -lt 1 ]] && _usage
@@ -227,6 +224,10 @@ function main() {
     processArgs "$@"
     # Update system
     update
+    # NFS Mount
+    apt-get install -y nfs-common
+    mkdir -p $NFS_LOCAL_PATH
+    mount $NFS_MOUNT_IP:$NFS_REMOTE_PATH $NFS_LOCAL_PATH
     # Install Docker
     installDocker
     # Install Portainer

@@ -53,7 +53,7 @@ bash ./cloud/php-fpm/install.sh
 ### Portainer
 
 ```bash
-bash ./cloud/portainer/install.sh -d=domain.com
+bash ./cloud/portainer/install.sh -d=domain.com -ni=10.3.3.333
 ```
 
 ### Rclone (Coming soon)
