@@ -101,6 +101,23 @@ function update() {
     }
 }
 
+function nfsMount() {
+    apt-get install -y nfs-common
+    mkdir -p "${NFS_LOCAL_PATH}"
+    # Check if NFS mount is already mounted
+    if [[ -n $(mount | grep "$NFS_LOCAL_PATH") ]]; then
+        _info "NFS mount already mounted."
+    else
+        # Mount NFS
+        _info "Mounting NFS share $NFS_REMOTE_PATH from $NFS_MOUNT_IP to $NFS_LOCAL_PATH"
+        mount "${NFS_MOUNT_IP}:${NFS_REMOTE_PATH}" "${NFS_LOCAL_PATH}" && {
+            _success "NFS share mounted. Command \"mount ${NFS_MOUNT_IP}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}\" was successful."
+        } || {
+            _die "Failed to mount NFS share. Command \"mount ${NFS_MOUNT_IP}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}\" failed."
+        }
+    fi
+}
+
 function installDocker() {
     _header "Installing Portainer"
     # Install Portainer
@@ -146,31 +163,24 @@ function installDocker() {
 function installPortainer() {
     # Install Portainer with Docker Compose
     _header "Installing Portainer with Docker Compose..."
-    # Create Portainer Volume
-    _info "Creating Portainer volume..."
-    docker volume create portainer_data && {
-        _info "Portainer volume created."
-    } || {
-        _die "Failed to create Portainer volume."
-    }
+    # Check if volume already exists
+    if [[ -n $(docker volume ls | grep portainer_data) ]]; then
+        _info "Portainer volume already exists."
+    else
+        # Create Portainer Volume
+        _info "Creating Portainer volume..."
+        docker volume create portainer_data && {
+            _info "Portainer volume created."
+        } || {
+            _die "Failed to create Portainer volume."
+        }
+    fi
     # Mount Portainer Volume
     # Modify docker-compose.yml
     _info "Modifying docker-compose.yml..."
-    _sed "VIRTUAL_HOST=.*" "VIRTUAL_HOST=$PORTAINER_VIRTUAL_HOST" "$COMPOSE_FILE" && {
-        _info "docker-compose.yml modified. VIRTUAL_HOST=$PORTAINER_VIRTUAL_HOST"
-    } || {
-        _die "Failed to modify docker-compose.yml. VIRTUAL_HOST=$PORTAINER_VIRTUAL_HOST"
-    }
-    _sed "device:.*" "device: $NFS_LOCAL_PATH" "$COMPOSE_FILE" && {
-        _info "docker-compose.yml modified. device: $NFS_LOCAL_PATH"
-    } || {
-        _die "Failed to modify docker-compose.yml. device: $NFS_LOCAL_PATH"
-    }
-    _sed "o:.*" "o: addr=$NFS_MOUNT_IP" "$COMPOSE_FILE" && {
-        _info "docker-compose.yml modified. o: addr=$NFS_MOUNT_IP"
-    } || {
-        _die "Failed to modify docker-compose.yml. o: addr=$NFS_MOUNT_IP"
-    }
+    _sed "VIRTUAL_HOST=.*" "VIRTUAL_HOST=$PORTAINER_VIRTUAL_HOST" "$COMPOSE_FILE"
+    _sed "device:.*" "device: $NFS_LOCAL_PATH" "$COMPOSE_FILE"
+    _sed "o:.*" "o: addr=$NFS_MOUNT_IP" "$COMPOSE_FILE"
     # Verify docker-compose.yml VIRTUAL_HOST value
     _info "Verifying docker-compose.yml VIRTUAL_HOST value..."
     local vhost=$(sed -n "/- VIRTUAL_HOST=.*/p" "$COMPOSE_FILE" | sed -e 's/- VIRTUAL_HOST=//' | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//')
@@ -251,21 +261,7 @@ function main() {
     # Update system
     update
     # NFS Mount
-    apt-get install -y nfs-common
-    mkdir -p "${NFS_LOCAL_PATH}"
-    # Check if NFS mount is already mounted
-    if [[ -n $(mount | grep "$NFS_LOCAL_PATH") ]]; then
-        _info "NFS mount already mounted."
-    else
-        # Mount NFS
-        _info "Mounting NFS share $NFS_REMOTE_PATH from $NFS_MOUNT_IP to $NFS_LOCAL_PATH"
-        mount "${NFS_MOUNT_IP}:${NFS_REMOTE_PATH}" "${NFS_LOCAL_PATH}" && {
-            _success "NFS share mounted. Command \"mount ${NFS_MOUNT_IP}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}\" was successful."
-        } || {
-            _die "Failed to mount NFS share. Command \"mount ${NFS_MOUNT_IP}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}\" failed."
-        }
-    fi
-
+    nfsMount
     # Install Docker
     installDocker
     # Install Portainer
