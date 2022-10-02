@@ -153,17 +153,39 @@ function installPortainer() {
     # Modify docker-compose.yml
     _info "Modifying docker-compose.yml..."
     _sed "VIRTUAL_HOST=.*" "VIRTUAL_HOST=$PORTAINER_VIRTUAL_HOST" "$COMPOSE_FILE" && {
-        _info "docker-compose.yml modified."
+        _info "docker-compose.yml modified. VIRTUAL_HOST=$PORTAINER_VIRTUAL_HOST"
     } || {
-        _die "Failed to modify docker-compose.yml."
+        _die "Failed to modify docker-compose.yml. VIRTUAL_HOST=$PORTAINER_VIRTUAL_HOST"
+    }
+    _sed "device:.*" "device: $NFS_LOCAL_PATH" "$COMPOSE_FILE" && {
+        _info "docker-compose.yml modified. device: $NFS_LOCAL_PATH"
+    } || {
+        _die "Failed to modify docker-compose.yml. device: $NFS_LOCAL_PATH"
+    }
+    _sed "o:.*" "o: addr=$NFS_MOUNT_IP" "$COMPOSE_FILE" && {
+        _info "docker-compose.yml modified. o: addr=$NFS_MOUNT_IP"
+    } || {
+        _die "Failed to modify docker-compose.yml. o: addr=$NFS_MOUNT_IP"
     }
     # Verify docker-compose.yml VIRTUAL_HOST value
     _info "Verifying docker-compose.yml VIRTUAL_HOST value..."
-    local line=$(sed -n "/- VIRTUAL_HOST=.*/p" "$COMPOSE_FILE" | sed -e 's/- VIRTUAL_HOST=//' | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//')
-    if [[ $line == "$PORTAINER_VIRTUAL_HOST" ]]; then
+    local vhost=$(sed -n "/- VIRTUAL_HOST=.*/p" "$COMPOSE_FILE" | sed -e 's/- VIRTUAL_HOST=//' | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//')
+    if [[ $vhost == "$PORTAINER_VIRTUAL_HOST" ]]; then
         _success "Access Portainer at: http://$PORTAINER_VIRTUAL_HOST"
     else
         _die "docker-compose.yml VIRTUAL_HOST value verification failed, expected: $PORTAINER_VIRTUAL_HOST but got: $line"
+    fi
+    local device=$(sed -n "/device:.*$/p" "$COMPOSE_FILE" | sed -e 's/device: //' | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//')
+    if [[ $device == "$NFS_LOCAL_PATH" ]]; then
+        _success "NFS local path: $NFS_LOCAL_PATH"
+    else
+        _die "docker-compose.yml device value verification failed, expected: $NFS_LOCAL_PATH but got: $line"
+    fi
+    local o=$(sed -n "/o:.*$/p" "$COMPOSE_FILE" | sed -e 's/o: //' | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//')
+    if [[ $o == "addr=$NFS_MOUNT_IP" ]]; then
+        _success "NFS mount IP: $NFS_MOUNT_IP"
+    else
+        _die "docker-compose.yml o value verification failed, expected: addr=$NFS_MOUNT_IP but got: $line"
     fi
 }
 
