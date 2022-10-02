@@ -48,8 +48,12 @@ function processArgs() {
             ;;
         -nrp=* | --nfs-remote-path=*)
             NFS_REMOTE_PATH="${arg#*=}"
+            # Check if path begins with a slash
+            if [[ "$NFS_REMOTE_PATH" != /* ]]; then
+                _die "NFS remote path must begin with a slash."
+            fi
             if [[ "$NFS_LOCAL_PATH" == "$defaultNfslocalpath" ]]; then
-                NFS_LOCAL_PATH="/mnt/$NFS_REMOTE_PATH"
+                NFS_LOCAL_PATH="/mnt$NFS_REMOTE_PATH"
             fi
             ;;
         -nlp=* | --nfs-local-path=*)
@@ -237,7 +241,7 @@ PORTAINER_VIRTUAL_HOST=
 PORTAINER_PORT="9000"
 COMPOSE_FILE="$(pwd)/cloud/portainer/docker-compose.yml"
 NFS_REMOTE_PATH="/nfs"
-NFS_LOCAL_PATH="/mnt/${NFS_REMOTE_PATH}"
+NFS_LOCAL_PATH="/mnt${NFS_REMOTE_PATH}"
 NFS_MOUNT_IP=
 
 function main() {
