@@ -4,6 +4,7 @@ lib_name_trap='trap'
 lib_version_trap=20121026
 
 stderr_log="$(pwd)/tmp/stderr"
+mkdir -p "$(pwd)/tmp"
 if [ ! -f "$stderr_log" ]; then
     touch "$stderr_log"
 fi

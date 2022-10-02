@@ -34,6 +34,7 @@ _successes=
 _warnings=
 
 _log_file="$(pwd)/logs/$(echo $0 | sed 's/\.\///g' | sed 's/\.sh//g' | sed 's/\//_/g')_$(date +%Y-%m-%d_%H:%M:%S).log"
+mkdir -p "$(pwd)/logs"
 
 DEBUG=0
 
