@@ -178,9 +178,9 @@ function installPortainer() {
     # Mount Portainer Volume
     # Modify docker-compose.yml
     _info "Modifying docker-compose.yml..."
-    _sed "VIRTUAL_HOST=.*" "VIRTUAL_HOST=$PORTAINER_VIRTUAL_HOST" "$COMPOSE_FILE"
-    _sed "device:.*" "device: $NFS_LOCAL_PATH" "$COMPOSE_FILE"
-    _sed "o:.*" "o: addr=$NFS_MOUNT_IP" "$COMPOSE_FILE"
+    _sed "VIRTUAL_HOST=.*" "VIRTUAL_HOST=${PORTAINER_VIRTUAL_HOST}" "${COMPOSE_FILE}"
+    _sed "device:.*" "device: ${NFS_LOCAL_PATH}" "${COMPOSE_FILE}"
+    _sed "o:.*" "o: addr=${NFS_MOUNT_IP}" "${COMPOSE_FILE}"
     # Verify docker-compose.yml VIRTUAL_HOST value
     _info "Verifying docker-compose.yml VIRTUAL_HOST value..."
     local vhost=$(sed -n "/- VIRTUAL_HOST=.*/p" "$COMPOSE_FILE" | sed -e 's/- VIRTUAL_HOST=//' | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//')

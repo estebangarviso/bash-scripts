@@ -14,7 +14,7 @@ services:
     command: -H unix:///var/run/docker.sock
     restart: always
     environment:
-      - VIRTUAL_HOST=portainer.virtualsense2.cl
+      - VIRTUAL_HOST=portainer.yourdomain.com
       - VIRTUAL_PORT=9000
     ports:
       - 8000:8000
@@ -27,5 +27,5 @@ volumes:
     driver: local
     driver_opts:
       type: nfs
-      device: /nfs
-      o: addr=10.3.3.333
+      device: <:/export path>
+      o: addr=<nfs server ip>,rw

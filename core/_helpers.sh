@@ -26,7 +26,7 @@ fi
 #
 function _sed() {
     local search=$1
-    local replace=$2
+    local replace="$(echo "$2" | sed 's/\//\\\//g')"
     local file=$3
     if [[ $(uname -s | grep -i darwin) ]]; then
         sed -i '' "s/$search/$replace/g" $file && {
