@@ -252,10 +252,14 @@ function main() {
     update
     # NFS Mount
     apt-get install -y nfs-common
-    mkdir -p $NFS_LOCAL_PATH
+    mkdir -p "${NFS_LOCAL_PATH}"
     _info "Mounting NFS share $NFS_REMOTE_PATH from $NFS_MOUNT_IP to $NFS_LOCAL_PATH"
-    mount "${NFS_MOUNT_IP}:${NFS_REMOTE_PATH}" "${NFS_LOCAL_PATH}"
-    success "NFS share mounted. mount ${NFS_MOUNT_IP}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}"
+    mount "${NFS_MOUNT_IP}:${NFS_REMOTE_PATH}" "${NFS_LOCAL_PATH}" && {
+        _success "NFS share mounted. Command \"mount ${NFS_MOUNT_IP}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}\" was successful."
+    } || {
+        _die "Failed to mount NFS share. Command \"mount ${NFS_MOUNT_IP}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}\" failed."
+    }
+
     # Install Docker
     installDocker
     # Install Portainer
