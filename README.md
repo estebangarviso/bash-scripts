@@ -29,7 +29,7 @@ bash ./cloud/mariadb/install.sh
 ```
 
 ```bash
-bash ./cloud/mariadb/create-database.sh -db=database_name
+bash ./cloud/mariadb/create-database.sh -db="database_name"
 ```
 
 ### Mail Server
@@ -53,7 +53,7 @@ bash ./cloud/php-fpm/install.sh
 ### Portainer
 
 ```bash
-bash ./cloud/portainer/install.sh -d=domain.com -ni=10.3.3.333
+bash ./cloud/portainer/install.sh -d="domain.com" -ni="10.3.3.333" -nrp="/custom-nfs-remote-path"
 ```
 
 ### Rclone (Coming soon)

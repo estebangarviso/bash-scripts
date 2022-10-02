@@ -53,7 +53,7 @@ function processArgs() {
                 _die "NFS remote path must begin with a slash."
             fi
             if [[ "$NFS_LOCAL_PATH" == "$defaultNfslocalpath" ]]; then
-                NFS_LOCAL_PATH="/mnt$NFS_REMOTE_PATH"
+                NFS_LOCAL_PATH="/mnt${NFS_REMOTE_PATH}"
             fi
             ;;
         -nlp=* | --nfs-local-path=*)
@@ -241,7 +241,7 @@ PORTAINER_VIRTUAL_HOST=
 PORTAINER_PORT="9000"
 COMPOSE_FILE="$(pwd)/cloud/portainer/docker-compose.yml"
 NFS_REMOTE_PATH="/nfs"
-NFS_LOCAL_PATH="/mnt${NFS_REMOTE_PATH}"
+NFS_LOCAL_PATH="/mnt/${NFS_REMOTE_PATH}"
 NFS_MOUNT_IP=
 
 function main() {
@@ -253,7 +253,9 @@ function main() {
     # NFS Mount
     apt-get install -y nfs-common
     mkdir -p $NFS_LOCAL_PATH
-    mount $NFS_MOUNT_IP:$NFS_REMOTE_PATH $NFS_LOCAL_PATH
+    _info "Mounting NFS share $NFS_REMOTE_PATH from $NFS_MOUNT_IP to $NFS_LOCAL_PATH"
+    mount "${NFS_MOUNT_IP}:${NFS_REMOTE_PATH}" "${NFS_LOCAL_PATH}"
+    success "NFS share mounted. mount ${NFS_MOUNT_IP}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}"
     # Install Docker
     installDocker
     # Install Portainer
