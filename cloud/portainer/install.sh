@@ -127,7 +127,7 @@ function nfsMount() {
     else
         # Mount NFS
         _info "Mounting Portainer NFS share. command: \"mount ${NFS_MOUNT_ADDRESS}:${NFS_PORTAINER_REMOTE_PATH} ${NFS_PORTAINER_LOCAL_PATH}\""
-        mount "${NFS_MOUNT_ADDRESS}:${NFS_PORTAINER_REMOTE_PATH}" "${NFS_PORTAINER_LOCAL_PATH}" && {
+        $(mount ${NFS_MOUNT_ADDRESS}:${NFS_PORTAINER_REMOTE_PATH} ${NFS_PORTAINER_LOCAL_PATH}) && {
             _success "Portainer NFS share mounted. Command \"mount ${NFS_MOUNT_ADDRESS}:${NFS_PORTAINER_REMOTE_PATH} ${NFS_PORTAINER_LOCAL_PATH}\" was successful."
         } || {
             _die "Failed to mount Portainer NFS share. Command \"mount ${NFS_MOUNT_ADDRESS}:${NFS_PORTAINER_REMOTE_PATH} ${NFS_PORTAINER_LOCAL_PATH}\" failed."
@@ -140,7 +140,7 @@ function nfsMount() {
     else
         # Mount NFS
         _info "Mounting Nginx Proxy Manager NFS share. command: \"mount ${NFS_MOUNT_ADDRESS}:${NFS_NGINX_PROXY_MANAGER_REMOTE_PATH} ${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}\""
-        mount "${NFS_MOUNT_ADDRESS}:${NFS_NGINX_PROXY_MANAGER_REMOTE_PATH}" "${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}" && {
+        $(mount ${NFS_MOUNT_ADDRESS}:${NFS_NGINX_PROXY_MANAGER_REMOTE_PATH} ${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}) && {
             _success "Nginx Proxy Manager NFS share mounted. Command \"mount ${NFS_MOUNT_ADDRESS}:${NFS_NGINX_PROXY_MANAGER_REMOTE_PATH} ${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}\" was successful."
         } || {
             _die "Failed to mount Nginx Proxy Manager NFS share. Command \"mount ${NFS_MOUNT_ADDRESS}:${NFS_NGINX_PROXY_MANAGER_REMOTE_PATH} ${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}\" failed."
