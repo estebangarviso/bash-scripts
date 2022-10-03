@@ -19,12 +19,15 @@ Script to install and deploy portainer behind nginx reverse proxy in a docker st
 Version $VERSION
 
     Options:
-        -n, --name                  Portainer name (default is portainer appended with a random string)
-        -nrp, --nfs-remote-path     NFS mount point (default: /nfs)
-        -nlp, --nfs-local-path      NFS mount point (default: /mnt/<nfs-remote-path>)
-        -p, --port                  Portainer port (default: 9000)
-        -h, --help                  Display this help and exit
-        -v, --version               Output version information and exit
+        -d, --domain                                    Domain name (mandatory)
+        -nprp, --nfs-portainer-remote-path              NFS portainer remote path (default: /portainer)
+        -nplp, --nfs-portainer-local-path               NFS portainer local path (default: /nfs/portainer)
+        -nnpmrp, --nfs-nginx-proxy-manager-remote-path  NFS nginx proxy manager remote path (default: /nginx-proxy-manager)
+        -nnpmplp, --nfs-nginx-proxy-manager-local-path  NFS nginx proxy manager local path (default: /nfs/nginx-proxy-manager)
+        -na, --nfs-address                              NFS address, it can be an IP or FQDN (mandatory)
+        -pp, --portainer-port                                      Portainer port (default: 9000)
+        -h, --help                                      Display this help and exit
+        -v, --version                                   Output version information and exit
 
     Examples:
         $(basename $0) --help
@@ -34,7 +37,8 @@ Version $VERSION
 }
 
 function processArgs() {
-    local defaultNfslocalpath="$NFS_LOCAL_PATH"
+    local defaultPortainerNfslocalpath="$NFS_PORTAINER_LOCAL_PATH"
+    local defaultNginxProxyManagerNfslocalpath="$NFS_NGINX_PROXY_MANAGER_LOCAL_PATH"
     for arg in "$@"; do
         case $arg in
         -d=* | --domain=*)
@@ -43,27 +47,40 @@ function processArgs() {
                 _die "Invalid domain: $DOMAIN"
             fi
             ;;
-        -n=* | --name=*)
-            PORTAINER_NAME="${arg#*=}"
-            ;;
-        -nrp=* | --nfs-remote-path=*)
-            NFS_REMOTE_PATH="${arg#*=}"
+        -nprp=* | --nfs-portainer-remote-path=*)
+            NFS_PORTAINER_REMOTE_PATH="${arg#*=}"
             # Check if path begins with a slash
-            if [[ "$NFS_REMOTE_PATH" != /* ]]; then
+            if [[ "$NFS_PORTAINER_REMOTE_PATH" != /* ]]; then
                 _die "NFS remote path must begin with a slash."
             fi
-            if [[ "$NFS_LOCAL_PATH" == "$defaultNfslocalpath" ]]; then
-                NFS_LOCAL_PATH="/mnt${NFS_REMOTE_PATH}"
+            if [[ "$NFS_PORTAINER_LOCAL_PATH" == "$defaultPortainerNfslocalpath" ]]; then
+                NFS_PORTAINER_LOCAL_PATH="/mnt/${NFS_PORTAINER_REMOTE_PATH##*/}"
             fi
             ;;
-        -nlp=* | --nfs-local-path=*)
-            NFS_LOCAL_PATH="${arg#*=}"
+        -nplp=* | --nfs-portainer-local-path=*)
+            NFS_PORTAINER_LOCAL_PATH="${arg#*=}"
             ;;
-        -ni=* | --nfs-ip=*)
-            NFS_MOUNT_IP="${arg#*=}"
+        -nnpmrp=* | --nfs-nginx-proxy-manager-remote-path=*)
+            NFS_NGINX_PROXY_MANAGER_REMOTE_PATH="${arg#*=}"
+            # Check if path begins with a slash
+            if [[ "$NFS_NGINX_PROXY_MANAGER_REMOTE_PATH" != /* ]]; then
+                _die "NFS remote path must begin with a slash."
+            fi
+            if [[ "$NFS_NGINX_PROXY_MANAGER_LOCAL_PATH" == "$defaultNginxProxyManagerNfslocalpath" ]]; then
+                NFS_NGINX_PROXY_MANAGER_LOCAL_PATH="/mnt/${NFS_NGINX_PROXY_MANAGER_REMOTE_PATH##*/}"
+            fi
             ;;
-        -p=* | --port=*)
-            PORTAINER_PORT="${arg#*=}"
+        -nnpmplp=* | --nfs-nginx-proxy-manager-local-path=*)
+            NFS_NGINX_PROXY_MANAGER_LOCAL_PATH="${arg#*=}"
+            ;;
+        -na=* | --nfs-address=*)
+            NFS_MOUNT_ADDRESS="${arg#*=}"
+            ;;
+        -pp=* | --portainer-port=*)
+            PORTAINER_VIRTUAL_PORT="${arg#*=}"
+            ;;
+        -np=* | --nginx-proxy-managment-port=*)
+            NGINX_PROXY_MANAGMENT_PORT="${arg#*=}"
             ;;
         --debug)
             DEBUG=1
@@ -79,11 +96,11 @@ function processArgs() {
     if [ -z "$DOMAIN" ]; then
         _die "Domain cannot be empty."
     fi
-    if [ -z "$NFS_MOUNT_IP" ]; then
-        _die "NFS mount IP cannot be empty."
+    if [ -z "$NFS_MOUNT_ADDRESS" ]; then
+        _die "NFS mount address cannot be empty. It can be an IP or FQDN."
     fi
     PORTAINER_VIRTUAL_HOST="portainer$(generateRandomString 16).$DOMAIN"
-    _success "Subdomain: $PORTAINER_VIRTUAL_HOST"
+    _success "Virtual Host: $PORTAINER_VIRTUAL_HOST"
 }
 
 function update() {
@@ -103,17 +120,30 @@ function update() {
 
 function nfsMount() {
     apt-get install -y nfs-common
-    mkdir -p "${NFS_LOCAL_PATH}"
-    # Check if NFS mount is already mounted
-    if [[ -n $(mount | grep "$NFS_LOCAL_PATH") ]]; then
-        _info "NFS mount already mounted."
+    mkdir -p "${NFS_PORTAINER_LOCAL_PATH}"
+    # Check if Portainer NFS mount is already mounted
+    if [[ -n $(mount | grep "$NFS_PORTAINER_LOCAL_PATH") ]]; then
+        _info "Portainer NFS mount already mounted."
     else
         # Mount NFS
-        _info "Mounting NFS share $NFS_REMOTE_PATH from $NFS_MOUNT_IP to $NFS_LOCAL_PATH"
-        mount "${NFS_MOUNT_IP}:${NFS_REMOTE_PATH}" "${NFS_LOCAL_PATH}" && {
-            _success "NFS share mounted. Command \"mount ${NFS_MOUNT_IP}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}\" was successful."
+        _info "Mounting Portainer NFS share $NFS_PORTAINER_REMOTE_PATH from $NFS_MOUNT_ADDRESS to $NFS_PORTAINER_LOCAL_PATH"
+        mount "${NFS_MOUNT_ADDRESS}:${NFS_PORTAINER_REMOTE_PATH}" "${NFS_PORTAINER_LOCAL_PATH}" && {
+            _success "Portainer NFS share mounted. Command \"mount ${NFS_MOUNT_ADDRESS}:${NFS_PORTAINER_REMOTE_PATH} ${NFS_PORTAINER_LOCAL_PATH}\" was successful."
         } || {
-            _die "Failed to mount NFS share. Command \"mount ${NFS_MOUNT_IP}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}\" failed."
+            _die "Failed to mount Portainer NFS share. Command \"mount ${NFS_MOUNT_ADDRESS}:${NFS_PORTAINER_REMOTE_PATH} ${NFS_PORTAINER_LOCAL_PATH}\" failed."
+        }
+    fi
+    mkdir -p "${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}"
+    # Check if Nginx Proxy Manager NFS mount is already mounted
+    if [[ -n $(mount | grep "$NFS_NGINX_PROXY_MANAGER_LOCAL_PATH") ]]; then
+        _info "Nginx Proxy Manager NFS mount already mounted."
+    else
+        # Mount NFS
+        _info "Mounting Nginx Proxy Manager NFS share $NFS_NGINX_PROXY_MANAGER_REMOTE_PATH from $NFS_MOUNT_ADDRESS to $NFS_NGINX_PROXY_MANAGER_LOCAL_PATH"
+        mount "${NFS_MOUNT_ADDRESS}:${NFS_NGINX_PROXY_MANAGER_REMOTE_PATH}" "${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}" && {
+            _success "Nginx Proxy Manager NFS share mounted. Command \"mount ${NFS_MOUNT_ADDRESS}:${NFS_NGINX_PROXY_MANAGER_REMOTE_PATH} ${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}\" was successful."
+        } || {
+            _die "Failed to mount Nginx Proxy Manager NFS share. Command \"mount ${NFS_MOUNT_ADDRESS}:${NFS_NGINX_PROXY_MANAGER_REMOTE_PATH} ${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}\" failed."
         }
     fi
 }
@@ -158,6 +188,18 @@ function installDocker() {
     else
         _die "Docker is not installed."
     fi
+    # Install Docker Compose
+    # Check if Docker Compose is already installed
+    if [[ -n $(which docker-compose) ]]; then
+        _info "Docker Compose is already installed."
+    else
+        _info "Installing Docker Compose..."
+        apt-get install docker-compose -y && {
+            _success "Docker Compose installed."
+        } || {
+            _die "Failed to install Docker Compose."
+        }
+    fi
 }
 
 function installPortainer() {
@@ -175,56 +217,50 @@ function installPortainer() {
             _die "Failed to create Portainer volume."
         }
     fi
+    # Check if nginx-network already exists
+    if [[ -n $(docker network ls | grep nginx-network) ]]; then
+        _info "nginx-network already exists."
+    else
+        # Create nginx-network
+        _info "Creating nginx-network..."
+        docker network create nginx-network && {
+            _info "nginx-network created."
+        } || {
+            _die "Failed to create nginx-network."
+        }
+    fi
+    # Check if Portainer is in nginx network
+    if [[ -n $(docker network inspect nginx-network | grep portainer) ]]; then
+        _info "Portainer is already in nginx network."
+    else
+        # Add Portainer to nginx-network
+        _info "Adding Portainer to nginx network..."
+        docker network connect nginx-network portainer && {
+            _info "Portainer added to nginx network."
+        } || {
+            _die "Failed to add Portainer to nginx network."
+        }
+    fi
+
     # Mount Portainer Volume
-    # Modify docker-compose.yml
-    _info "Modifying docker-compose.yml..."
-    _sed "VIRTUAL_HOST=.*" "VIRTUAL_HOST=${PORTAINER_VIRTUAL_HOST}" "${COMPOSE_FILE}"
-    _sed "device:.*" "device: ${NFS_LOCAL_PATH}" "${COMPOSE_FILE}"
-    _sed "o:.*" "o: addr=${NFS_MOUNT_IP}" "${COMPOSE_FILE}"
-    # Verify docker-compose.yml VIRTUAL_HOST value
-    _info "Verifying docker-compose.yml VIRTUAL_HOST value..."
-    local vhost=$(sed -n "/- VIRTUAL_HOST=.*/p" "$COMPOSE_FILE" | sed -e 's/- VIRTUAL_HOST=//' | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//')
-    if [[ $vhost == "$PORTAINER_VIRTUAL_HOST" ]]; then
-        _success "Access Portainer at: http://$PORTAINER_VIRTUAL_HOST"
-    else
-        _die "docker-compose.yml VIRTUAL_HOST value verification failed, expected: $PORTAINER_VIRTUAL_HOST but got: $line"
-    fi
-    local device=$(sed -n "/device:.*$/p" "$COMPOSE_FILE" | sed -e 's/device: //' | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//')
-    if [[ $device == "$NFS_LOCAL_PATH" ]]; then
-        _success "NFS local path: $NFS_LOCAL_PATH"
-    else
-        _die "docker-compose.yml device value verification failed, expected: $NFS_LOCAL_PATH but got: $line"
-    fi
-    local o=$(sed -n "/o:.*$/p" "$COMPOSE_FILE" | sed -e 's/o: //' | sed -e 's/^[ \t]*//' | sed -e 's/[ \t]*$//')
-    if [[ $o == "addr=$NFS_MOUNT_IP" ]]; then
-        _success "NFS mount IP: $NFS_MOUNT_IP"
-    else
-        _die "docker-compose.yml o value verification failed, expected: addr=$NFS_MOUNT_IP but got: $line"
-    fi
 }
 
 function deploy() {
     # Deploy Portainer
     _header "Deploying Portainer..."
-    docker stack deploy portainer -c "$COMPOSE_FILE" && {
+    docker-compose -f "${PORTAINER_COMPOSE_FILE}" up -d && {
         _info "Portainer deployed."
     } || {
         _die "Failed to deploy Portainer."
     }
-    # Check if Portainer is deployed
-    _info "Checking if Portainer is deployed..."
-    if [[ -n $(docker service ls | grep portainer_portainer_1) ]]; then
-        _success "Portainer is deployed."
-    else
-        _die "Portainer is not deployed."
-    fi
-    if [[ -n $(docker service ls | grep portainer_nginx-proxy_1) ]]; then
-        _success "Portainer reverse-proxy is deployed."
-    else
-        _die "Portainer reverse-proxy is not deployed."
-    fi
-
     _success "Portainer has been deployed."
+    # Deploy Nginx Proxy Manager
+    _header "Deploying Nginx Proxy Manager..."
+    docker-compose -f "${NGINX_PROXY_MANAGER_COMPOSE_FILE}" up -d && {
+        _info "Nginx Proxy Manager deployed."
+    } || {
+        _die "Failed to deploy Nginx Proxy Manager."
+    }
 }
 
 function generatePassword() {
@@ -232,9 +268,8 @@ function generatePassword() {
 }
 
 function generateRandomString() {
-    local length=${1:-32}
-    local randomString=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1)
-    echo $randomString
+    # Generate random string with python secrets module
+    echo $(${BIN_PYTHON3} -c "import secrets; print(secrets.token_urlsafe(16))")
 }
 
 #
@@ -245,14 +280,29 @@ export LANG=C
 
 DEBUG=0 # 1|0
 _debug set -x
+# Check if pyhton3 is installed
+if [[ -z $(which python3) ]]; then
+    # Install python3
+    _info "Installing python3..."
+    apt install python3 -y && {
+        _info "python3 installed."
+    } || {
+        _die "Failed to install python3."
+    }
+fi
+BIN_PYTHON3=$(which python3)
 VERSION="0.1.0"
 DOMAIN=
 PORTAINER_VIRTUAL_HOST=
-PORTAINER_PORT="9000"
-COMPOSE_FILE="$(pwd)/cloud/portainer/docker-compose.yml"
-NFS_REMOTE_PATH="/nfs"
-NFS_LOCAL_PATH="/mnt/${NFS_REMOTE_PATH}"
-NFS_MOUNT_IP=
+PORTAINER_VIRTUAL_PORT="9443"
+NGINX_PROXY_MANAGMENT_PORT="81"
+PORTAINER_COMPOSE_FILE="$(pwd)/cloud/portainer/docker-compose.yml"
+NGINX_PROXY_MANAGER_COMPOSE_FILE="$(pwd)/cloud/portainer/nginx-proxy/docker-compose.yml"
+NFS_PORTAINER_REMOTE_PATH="/portainer"
+NFS_PORTAINER_LOCAL_PATH="/mnt/${NFS_PORTAINER_REMOTE_PATH#/}"
+NFS_NGINX_PROXY_MANAGER_REMOTE_PATH="/nginx-proxy-manager"
+NFS_NGINX_PROXY_MANAGER_LOCAL_PATH="/mnt/${NFS_NGINX_PROXY_MANAGER_REMOTE_PATH#/}"
+NFS_MOUNT_ADDRESS=
 
 function main() {
     [[ $# -lt 1 ]] && _usage
@@ -264,6 +314,17 @@ function main() {
     nfsMount
     # Install Docker
     installDocker
+    # Parse variables to environment for docker-compose
+    export DOMAIN
+    export PORTAINER_VIRTUAL_HOST
+    export PORTAINER_VIRTUAL_PORT
+    export NGINX_PROXY_MANAGMENT_PORT
+    export NFS_PORTAINER_REMOTE_PATH
+    export NFS_PORTAINER_LOCAL_PATH
+    export NFS_MOUNT_ADDRESS
+    # Create directories
+    mkdir -p "${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}/data"
+    mkdir -p "${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}/letsencrypt"
     # Install Portainer
     installPortainer
     # Deploy Portainer

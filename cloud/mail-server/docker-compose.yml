@@ -4,8 +4,8 @@ services:
     container_name: mailserver
     # If the FQDN for your mail-server is only two labels (eg: example.com),
     # you can assign this entirely to `hostname` and remove `domainname`.
-    hostname: mail
-    domainname: example.com
+    hostname: ${MAILSERVER_HOSTNAME}
+    domainname: ${MAILSERVER_DOMAINNAME}
     env_file: mailserver.env
     # More information about the mail-server ports:
     # https://docker-mailserver.github.io/docker-mailserver/edge/config/security/understanding-the-ports/
@@ -17,11 +17,11 @@ services:
       - '587:587' # ESMTP (explicit TLS => STARTTLS)
       - '993:993' # IMAP4 (implicit TLS)
     volumes:
-      - ./docker-data/dms/mail-data/:/var/mail/
-      - ./docker-data/dms/mail-state/:/var/mail-state/
-      - ./docker-data/dms/mail-logs/:/var/log/mail/
-      - ./docker-data/dms/config/:/tmp/docker-mailserver/
-      - ./docker-data/nginx-proxy/certs/:/etc/letsencrypt/
+      - /mnt/docker-mail-server/mail-data/:/var/mail/
+      - /mnt/docker-mail-server/mail-state/:/var/mail-state/
+      - /mnt/docker-mail-server/mail-logs/:/var/log/mail/
+      - /mnt/docker-mail-server/config/:/tmp/docker-mailserver/
+      - /mnt/docker-mail-server/nginx-proxy/letsencrypt/:/etc/letsencrypt/
       - /etc/localtime:/etc/localtime:ro
     restart: always
     stop_grace_period: 1m

@@ -1,31 +1,27 @@
-version: '2'
-
-services:
-  nginx-proxy:
-    image: jwilder/nginx-proxy
-    restart: always
-    ports:
-      - '80:80'
-    volumes:
-      - '/var/run/docker.sock:/tmp/docker.sock:ro'
-
-  portainer:
-    image: portainer/portainer-ce:latest
-    command: -H unix:///var/run/docker.sock
-    restart: always
-    environment:
-      - VIRTUAL_HOST=portainer.virtualsense2.cl
-      - VIRTUAL_PORT=9000
-    ports:
-      - 8000:8000
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_data:/data
-
+version: '3'
 volumes:
   portainer_data:
     driver: local
     driver_opts:
       type: nfs
-      device: /nfs
-      o: addr=10.3.3.333
+      o: addr=${NFS_MOUNT_ADDRESS},nfsvers=4
+      device: :${NFS_PORTAINER_LOCAL_PATH}
+services:
+  portainer:
+    command: -H unix:///var/run/docker.sock
+    image: portainer/portainer
+    container_name: portainer
+    restart: always
+    privileged: true
+    volumes:
+      - portainer_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - VIRTUAL_HOST=${PORTAINER_VIRTUAL_HOST}
+      - VIRTUAL_PORT=${PORTAINER_VIRTUAL_PORT}
+    ports:
+      - 8000:8000
+networks:
+  default:
+    external:
+      name: nginx-network

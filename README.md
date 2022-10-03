@@ -53,7 +53,7 @@ bash ./cloud/php-fpm/install.sh
 ### Portainer
 
 ```bash
-bash ./cloud/portainer/install.sh -d="domain.com" -ni="10.3.3.333" -nrp="/custom-nfs-remote-path"
+bash ./cloud/portainer/install.sh -d="domain.com" -na="FQDN"
 ```
 
 ### Rclone (Coming soon)

@@ -197,6 +197,10 @@ function main() {
     processArgs "$@"
     # Update
     update
+    # Export environment variables
+    export HOSTNAME
+    export DOMAIN
+    export IP_ADDRESS
     # Install dependencies
     install
 }

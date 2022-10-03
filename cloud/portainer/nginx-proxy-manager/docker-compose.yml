@@ -1,0 +1,19 @@
+version: '3'
+services:
+  nginx-proxy:
+    container_name: nginx-proxy
+    image: 'jc21/nginx-proxy-manager:latest'
+    restart: always
+    ports:
+      - '80:80'
+      - '${NGINX_PROXY_MANAGMENT_VIRTUAL_PORT}:81'
+      - '443:443'
+    volumes:
+      - /mnt/nginx/data:/data
+      - /mnt/nginx/letsencrypt:/etc/letsencrypt
+      - /mnt/nginx/config.json:/app/config/production.json
+    networks:
+      - nginx-network
+networks:
+  nginx-network:
+    external: true

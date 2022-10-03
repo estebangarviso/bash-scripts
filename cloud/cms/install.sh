@@ -174,9 +174,7 @@ function generatePassword() {
 }
 
 function generateRandomString() {
-    local length=${1:-32}
-    local randomString=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $length | head -n 1)
-    echo $randomString
+    echo $(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-32} | head -n 1)
 }
 
 function update() {
