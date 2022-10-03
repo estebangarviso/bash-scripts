@@ -239,20 +239,6 @@ function installPortainer() {
             _die "Failed to create nginx-network."
         }
     fi
-    # Check if Portainer is in nginx network
-    if [[ -n $(docker network inspect nginx-network | grep portainer) ]]; then
-        _info "Portainer is already in nginx network."
-    else
-        # Add Portainer to nginx-network
-        _info "Adding Portainer to nginx network..."
-        docker network connect nginx-network portainer && {
-            _info "Portainer added to nginx network."
-        } || {
-            _die "Failed to add Portainer to nginx network."
-        }
-    fi
-
-    # Mount Portainer Volume
 }
 
 function deploy() {
@@ -271,6 +257,18 @@ function deploy() {
     } || {
         _die "Failed to deploy Nginx Proxy Manager."
     }
+    # Check if Portainer is in nginx network
+    if [[ -n $(docker network inspect nginx-network | grep portainer) ]]; then
+        _info "Portainer is already in nginx network."
+    else
+        # Add Portainer to nginx-network
+        _info "Adding Portainer to nginx network..."
+        docker network connect nginx-network portainer && {
+            _info "Portainer added to nginx network."
+        } || {
+            _die "Failed to add Portainer to nginx network."
+        }
+    fi
 }
 
 function generatePassword() {
