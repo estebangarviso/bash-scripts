@@ -227,16 +227,16 @@ function installPortainer() {
             _die "Failed to create Portainer volume."
         }
     fi
-    # Check if nginx-network already exists
-    if [[ -n $(docker network ls | grep nginx-network) ]]; then
-        _info "nginx-network already exists."
+    # Check if proxy-network already exists
+    if [[ -n $(docker network ls | grep proxy-network) ]]; then
+        _info "proxy-network already exists."
     else
-        # Create nginx-network
-        _info "Creating nginx-network..."
-        docker network create nginx-network && {
-            _info "nginx-network created."
+        # Create proxy-network
+        _info "Creating proxy-network..."
+        docker network create proxy-network && {
+            _info "proxy-network created."
         } || {
-            _die "Failed to create nginx-network."
+            _die "Failed to create proxy-network."
         }
     fi
 }
@@ -257,16 +257,16 @@ function deploy() {
     } || {
         _die "Failed to deploy Nginx Proxy Manager."
     }
-    # Check if Portainer is in nginx network
-    if [[ -n $(docker network inspect nginx-network | grep portainer) ]]; then
-        _info "Portainer is already in nginx network."
+    # Check if Portainer is in proxy-network
+    if [[ -n $(docker network inspect proxy-network | grep portainer) ]]; then
+        _info "Portainer is already in proxy-network."
     else
-        # Add Portainer to nginx-network
-        _info "Adding Portainer to nginx network..."
-        docker network connect nginx-network portainer && {
-            _info "Portainer added to nginx network."
+        # Add Portainer to proxy-network
+        _info "Adding Portainer to proxy-network..."
+        docker network connect proxy-network portainer && {
+            _info "Portainer added to proxy-network."
         } || {
-            _die "Failed to add Portainer to nginx network."
+            _die "Failed to add Portainer to proxy-network."
         }
     fi
 }
@@ -331,6 +331,7 @@ function main() {
     export NFS_PORTAINER_LOCAL_PATH
     export NFS_MOUNT_ADDRESS
     # Create directories
+    mkdir -p "${NFS_PORTAINER_LOCAL_PATH}/data"
     mkdir -p "${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}/data"
     mkdir -p "${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}/letsencrypt"
     # Install Portainer

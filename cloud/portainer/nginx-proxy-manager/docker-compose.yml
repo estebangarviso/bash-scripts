@@ -13,7 +13,7 @@ services:
       - /mnt/nginx/letsencrypt:/etc/letsencrypt
       - /mnt/nginx/config.json:/app/config/production.json
     networks:
-      - nginx-network
+      - proxy-network
 networks:
-  nginx-network:
+  proxy-network:
     external: true
