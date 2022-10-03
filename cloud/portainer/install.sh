@@ -25,7 +25,7 @@ Version $VERSION
         -nnpmrp, --nfs-nginx-proxy-manager-remote-path  NFS nginx proxy manager remote path (default: /nginx-proxy-manager)
         -nnpmplp, --nfs-nginx-proxy-manager-local-path  NFS nginx proxy manager local path (default: /nfs/nginx-proxy-manager)
         -na, --nfs-address                              NFS address, it can be an IP or FQDN (mandatory)
-        -pp, --portainer-port                                      Portainer port (default: 9000)
+        -pp, --portainer-port                           Portainer port (default: 9000)
         -h, --help                                      Display this help and exit
         -v, --version                                   Output version information and exit
 
@@ -119,9 +119,21 @@ function update() {
 }
 
 function nfsMount() {
-    apt-get install -y nfs-common
+    # Install the NFS Utilities Package on the Server
+    if [ dpkg -l | grep nfs-common ]; then
+        _info "NFS Utilities Package already installed."
+    else
+        _info "Installing NFS Utilities Package..."
+        apt install nfs-common -y && {
+            _info "NFS Utilities Package installed."
+        } || {
+            _die "Failed to install NFS Utilities Package."
+        }
+    fi
+    # Create NFS directories
     mkdir -p "${NFS_PORTAINER_LOCAL_PATH}"
-    # Check if Portainer NFS mount is already mounted
+    mkdir -p "${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}"
+    # Check if NFS mount is already mounted
     if [[ -n $(mount | grep "$NFS_PORTAINER_LOCAL_PATH") ]]; then
         _info "Portainer NFS mount already mounted."
     else
@@ -133,8 +145,6 @@ function nfsMount() {
             _die "Failed to mount Portainer NFS share. Command \"mount ${NFS_MOUNT_ADDRESS}:${NFS_PORTAINER_REMOTE_PATH} ${NFS_PORTAINER_LOCAL_PATH}\" failed."
         }
     fi
-    mkdir -p "${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}"
-    # Check if Nginx Proxy Manager NFS mount is already mounted
     if [[ -n $(mount | grep "$NFS_NGINX_PROXY_MANAGER_LOCAL_PATH") ]]; then
         _info "Nginx Proxy Manager NFS mount already mounted."
     else
