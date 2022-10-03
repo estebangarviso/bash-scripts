@@ -20,10 +20,8 @@ Version $VERSION
 
     Options:
         -d, --domain                                    Domain name (mandatory)
-        -nprp, --nfs-portainer-remote-path              NFS portainer remote path (default: /portainer)
-        -nplp, --nfs-portainer-local-path               NFS portainer local path (default: /nfs/portainer)
-        -nnpmrp, --nfs-nginx-proxy-manager-remote-path  NFS nginx proxy manager remote path (default: /nginx-proxy-manager)
-        -nnpmplp, --nfs-nginx-proxy-manager-local-path  NFS nginx proxy manager local path (default: /nfs/nginx-proxy-manager)
+        -nrp, --nfs-remote-path                         NFS remote path (default: /fs-share)
+        -nlp, --nfs-local-path                          NFS local path (default: /nfs/fs-share)
         -na, --nfs-address                              NFS address, it can be an IP or FQDN (mandatory)
         -pp, --portainer-port                           Portainer port (default: 9000)
         -h, --help                                      Display this help and exit
@@ -37,8 +35,8 @@ Version $VERSION
 }
 
 function processArgs() {
-    local defaultPortainerNfslocalpath="$NFS_PORTAINER_LOCAL_PATH"
-    local defaultNginxProxyManagerNfslocalpath="$NFS_NGINX_PROXY_MANAGER_LOCAL_PATH"
+    local defaultPortainerNfslocalpath="$NFS_LOCAL_PATH"
+    local defaultNginxProxyManagerNfslocalpath="$NFS_LOCAL_PATH"
     for arg in "$@"; do
         case $arg in
         -d=* | --domain=*)
@@ -47,31 +45,18 @@ function processArgs() {
                 _die "Invalid domain: $DOMAIN"
             fi
             ;;
-        -nprp=* | --nfs-portainer-remote-path=*)
-            NFS_PORTAINER_REMOTE_PATH="${arg#*=}"
+        -nrp=* | --nfs-remote-path=*)
+            NFS_REMOTE_PATH="${arg#*=}"
             # Check if path begins with a slash
-            if [[ "$NFS_PORTAINER_REMOTE_PATH" != /* ]]; then
+            if [[ "$NFS_REMOTE_PATH" != /* ]]; then
                 _die "NFS remote path must begin with a slash."
             fi
-            if [[ "$NFS_PORTAINER_LOCAL_PATH" == "$defaultPortainerNfslocalpath" ]]; then
-                NFS_PORTAINER_LOCAL_PATH="/mnt/${NFS_PORTAINER_REMOTE_PATH##*/}"
+            if [[ "$NFS_LOCAL_PATH" == "$defaultPortainerNfslocalpath" ]]; then
+                NFS_LOCAL_PATH="/mnt/${NFS_REMOTE_PATH##*/}"
             fi
             ;;
-        -nplp=* | --nfs-portainer-local-path=*)
-            NFS_PORTAINER_LOCAL_PATH="${arg#*=}"
-            ;;
-        -nnpmrp=* | --nfs-nginx-proxy-manager-remote-path=*)
-            NFS_NGINX_PROXY_MANAGER_REMOTE_PATH="${arg#*=}"
-            # Check if path begins with a slash
-            if [[ "$NFS_NGINX_PROXY_MANAGER_REMOTE_PATH" != /* ]]; then
-                _die "NFS remote path must begin with a slash."
-            fi
-            if [[ "$NFS_NGINX_PROXY_MANAGER_LOCAL_PATH" == "$defaultNginxProxyManagerNfslocalpath" ]]; then
-                NFS_NGINX_PROXY_MANAGER_LOCAL_PATH="/mnt/${NFS_NGINX_PROXY_MANAGER_REMOTE_PATH##*/}"
-            fi
-            ;;
-        -nnpmplp=* | --nfs-nginx-proxy-manager-local-path=*)
-            NFS_NGINX_PROXY_MANAGER_LOCAL_PATH="${arg#*=}"
+        -nlp=* | --nfs-local-path=*)
+            NFS_LOCAL_PATH="${arg#*=}"
             ;;
         -na=* | --nfs-address=*)
             NFS_MOUNT_ADDRESS="${arg#*=}"
@@ -131,29 +116,17 @@ function nfsMount() {
         }
     fi
     # Create NFS directories
-    mkdir -p "${NFS_PORTAINER_LOCAL_PATH}"
-    mkdir -p "${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}"
+    mkdir -p "${NFS_LOCAL_PATH}"
     # Check if NFS mount is already mounted
-    if [[ -n $(mount | grep "$NFS_PORTAINER_LOCAL_PATH") ]]; then
-        _info "Portainer NFS mount already mounted."
+    if [[ -n $(mount | grep "$NFS_LOCAL_PATH") ]]; then
+        _info "NFS mount already mounted."
     else
         # Mount NFS
-        _info "Mounting Portainer NFS share. command: \"mount ${NFS_MOUNT_ADDRESS}:${NFS_PORTAINER_REMOTE_PATH} ${NFS_PORTAINER_LOCAL_PATH}\""
-        $(mount ${NFS_MOUNT_ADDRESS}:${NFS_PORTAINER_REMOTE_PATH} ${NFS_PORTAINER_LOCAL_PATH}) && {
-            _success "Portainer NFS share mounted. Command \"mount ${NFS_MOUNT_ADDRESS}:${NFS_PORTAINER_REMOTE_PATH} ${NFS_PORTAINER_LOCAL_PATH}\" was successful."
+        _info "Mounting NFS share. command: \"mount ${NFS_MOUNT_ADDRESS}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}\""
+        $(mount ${NFS_MOUNT_ADDRESS}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}) && {
+            _success "NFS share mounted. Command \"mount ${NFS_MOUNT_ADDRESS}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}\" was successful."
         } || {
-            _die "Failed to mount Portainer NFS share. Command \"mount ${NFS_MOUNT_ADDRESS}:${NFS_PORTAINER_REMOTE_PATH} ${NFS_PORTAINER_LOCAL_PATH}\" failed."
-        }
-    fi
-    if [[ -n $(mount | grep "$NFS_NGINX_PROXY_MANAGER_LOCAL_PATH") ]]; then
-        _info "Nginx Proxy Manager NFS mount already mounted."
-    else
-        # Mount NFS
-        _info "Mounting Nginx Proxy Manager NFS share. command: \"mount ${NFS_MOUNT_ADDRESS}:${NFS_NGINX_PROXY_MANAGER_REMOTE_PATH} ${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}\""
-        $(mount ${NFS_MOUNT_ADDRESS}:${NFS_NGINX_PROXY_MANAGER_REMOTE_PATH} ${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}) && {
-            _success "Nginx Proxy Manager NFS share mounted. Command \"mount ${NFS_MOUNT_ADDRESS}:${NFS_NGINX_PROXY_MANAGER_REMOTE_PATH} ${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}\" was successful."
-        } || {
-            _die "Failed to mount Nginx Proxy Manager NFS share. Command \"mount ${NFS_MOUNT_ADDRESS}:${NFS_NGINX_PROXY_MANAGER_REMOTE_PATH} ${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}\" failed."
+            _die "Failed to mount NFS share. Command \"mount ${NFS_MOUNT_ADDRESS}:${NFS_REMOTE_PATH} ${NFS_LOCAL_PATH}\" failed."
         }
     fi
 }
@@ -317,10 +290,8 @@ PORTAINER_VIRTUAL_PORT="9443"
 NGINX_PROXY_MANAGMENT_PORT="81"
 PORTAINER_COMPOSE_FILE="$(pwd)/cloud/portainer/docker-compose.yml"
 NGINX_PROXY_MANAGER_COMPOSE_FILE="$(pwd)/cloud/portainer/nginx-proxy-manager/docker-compose.yml"
-NFS_PORTAINER_REMOTE_PATH="/portainer"
-NFS_PORTAINER_LOCAL_PATH="/mnt/${NFS_PORTAINER_REMOTE_PATH#/}"
-NFS_NGINX_PROXY_MANAGER_REMOTE_PATH="/nginx-proxy-manager"
-NFS_NGINX_PROXY_MANAGER_LOCAL_PATH="/mnt/${NFS_NGINX_PROXY_MANAGER_REMOTE_PATH#/}"
+NFS_REMOTE_PATH="/fs-share"
+NFS_LOCAL_PATH="/mnt/${NFS_REMOTE_PATH#/}"
 NFS_MOUNT_ADDRESS=
 
 function main() {
@@ -338,13 +309,13 @@ function main() {
     export PORTAINER_VIRTUAL_HOST
     export PORTAINER_VIRTUAL_PORT
     export NGINX_PROXY_MANAGMENT_PORT
-    export NFS_PORTAINER_REMOTE_PATH
-    export NFS_PORTAINER_LOCAL_PATH
+    export NFS_REMOTE_PATH
+    export NFS_LOCAL_PATH
     export NFS_MOUNT_ADDRESS
     # Create directories
-    mkdir -p "${NFS_PORTAINER_LOCAL_PATH}/data"
-    mkdir -p "${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}/data"
-    mkdir -p "${NFS_NGINX_PROXY_MANAGER_LOCAL_PATH}/letsencrypt"
+    mkdir -p "${NFS_LOCAL_PATH}/portainer/data"
+    mkdir -p "${NFS_LOCAL_PATH}/nginx-proxy-manager/data"
+    mkdir -p "${NFS_LOCAL_PATH}/nginx-proxy-manager/letsencrypt"
     # Install Portainer
     installPortainer
     # Deploy Portainer

@@ -9,11 +9,11 @@ services:
       - '${NGINX_PROXY_MANAGMENT_VIRTUAL_PORT}:81'
       - '443:443'
     volumes:
-      - /mnt/nginx/data:/data
-      - /mnt/nginx/letsencrypt:/etc/letsencrypt
-      - /mnt/nginx/config.json:/app/config/production.json
+      - ${NFS_LOCAL_PATH}/nginx-proxy-manager/data:/data
+      - ${NFS_LOCAL_PATH}/nginx-proxy-manager/letsencrypt:/etc/letsencrypt
+      - ${NFS_LOCAL_PATH}/nginx-proxy-manager/config.json:/app/config/production.json
     networks:
-      - proxy-network
+      - nginx-network
 networks:
-  proxy-network:
+  nginx-network:
     external: true

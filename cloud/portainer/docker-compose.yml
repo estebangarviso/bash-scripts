@@ -7,13 +7,14 @@ services:
     restart: always
     privileged: true
     volumes:
-      - /mnt/portainer/data:/data
+      - ${NFS_LOCAL_PATH}/portainer/data:/data
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - VIRTUAL_HOST=${PORTAINER_VIRTUAL_HOST}
       - VIRTUAL_PORT=${PORTAINER_VIRTUAL_PORT}
     ports:
       - 8000:8000
+      - ${PORTAINER_VIRTUAL_PORT}:9000
 networks:
   default:
     external:
