@@ -244,19 +244,30 @@ function installPortainer() {
 function deploy() {
     # Deploy Portainer
     _header "Deploying Portainer..."
-    docker-compose -f "${PORTAINER_COMPOSE_FILE}" up -d && {
-        _info "Portainer deployed."
-    } || {
-        _die "Failed to deploy Portainer."
-    }
-    _success "Portainer has been deployed."
+    # Check if Portainer is already deployed
+    if [[ -n $(docker ps -a | grep portainer) ]]; then
+        _info "Portainer is already deployed."
+    else
+        # Deploy Portainer
+        docker-compose -f "${PORTAINER_COMPOSE_FILE}" up -d && {
+            _success "Portainer deployed."
+        } || {
+            _die "Failed to deploy Portainer."
+        }
+    fi
     # Deploy Nginx Proxy Manager
     _header "Deploying Nginx Proxy Manager..."
-    docker-compose -f "${NGINX_PROXY_MANAGER_COMPOSE_FILE}" up -d && {
-        _info "Nginx Proxy Manager deployed."
-    } || {
-        _die "Failed to deploy Nginx Proxy Manager."
-    }
+    # Check if Nginx Proxy Manager is already deployed
+    if [[ -n $(docker ps -a | grep nginx-proxy-manager) ]]; then
+        _info "Nginx Proxy Manager is already deployed."
+    else
+        # Deploy Nginx Proxy Manager
+        docker-compose -f "${NGINX_PROXY_MANAGER_COMPOSE_FILE}" up -d && {
+            _success "Nginx Proxy Manager deployed."
+        } || {
+            _die "Failed to deploy Nginx Proxy Manager."
+        }
+    fi
     # Check if Portainer is in proxy-network
     if [[ -n $(docker network inspect proxy-network | grep portainer) ]]; then
         _info "Portainer is already in proxy-network."
